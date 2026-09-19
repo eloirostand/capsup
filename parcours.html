@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon parcours — CapSup</title>
+<meta name="description" content="Quelques questions pour dégager les formations post-bac qui correspondent à tes critères, sans classement ni score arbitraire.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Accueil","item":"https://capsup.netlify.app/index.html"},
+    {"@type":"ListItem","position":2,"name":"Mon parcours"}
+]}
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">Cap<span>Sup</span></a>
+    <div class="nav-links">
+      <a href="index.html">Accueil</a>
+      <a href="formations.html">Formations</a>
+      <a href="comparateur.html">Comparer</a>
+      <a href="parcours.html" class="active">Mon parcours</a>
+      <a href="trajectoires.html">Trajectoires</a>
+    </div>
+    <input class="nav-search" type="text" id="nav-search-input" placeholder="Rechercher une formation">
+    <a href="contact.html" class="btn btn-accent btn-sm">Bilan gratuit</a>
+  </div>
+</nav>
+
+<nav class="breadcrumb" aria-label="Fil d'Ariane">
+  <div class="container">
+    <ol>
+        <li><a href="index.html">Accueil</a></li>
+        <li aria-current="page"><span>Mon parcours</span></li>
+    </ol>
+  </div>
+</nav>
+
+<div class="container" style="padding: 2rem 0 4rem; max-width: 760px;">
+  <h1>Mon parcours</h1>
+  <p style="color:var(--text-soft);">Réponds à quelques questions pour obtenir une première sélection de formations à explorer — le catalogue ne se limite pas au droit et au commerce, il couvre aussi la gestion technique (BUT), les sciences sociales et l'intelligence artificielle. Il ne s'agit pas d'un verdict : c'est un point de départ pour ta recherche.</p>
+
+  <div class="question-block">
+    <h3>Quels domaines t'intéressent ?</h3>
+    <div class="option-grid" data-key="domaines" data-multi="true">
+      <div class="option-chip">Droit</div>
+      <div class="option-chip">Économie</div>
+      <div class="option-chip">Gestion</div>
+      <div class="option-chip">Commerce</div>
+      <div class="option-chip">Comptabilité</div>
+      <div class="option-chip">Intelligence artificielle</div>
+      <div class="option-chip">Sciences politiques</div>
+      <div class="option-chip">Relations internationales</div>
+      <div class="option-chip">Management</div>
+    </div>
+  </div>
+
+  <div class="question-block">
+    <h3>Quel type d'études préfères-tu ?</h3>
+    <div class="option-grid" data-key="type_pref" data-multi="false">
+      <div class="option-chip">Licence universitaire</div>
+      <div class="option-chip">BUT (professionnalisant)</div>
+      <div class="option-chip">Bachelor international</div>
+      <div class="option-chip">CPGE (concours)</div>
+      <div class="option-chip">IEP / Sciences Po</div>
+      <div class="option-chip">Peu importe</div>
+    </div>
+  </div>
+
+  <div class="question-block">
+    <h3>Préfères-tu une formation très encadrée ou autonome ?</h3>
+    <div class="option-grid" data-key="encadrement" data-multi="false">
+      <div class="option-chip">Très encadrée (emploi du temps chargé, cadre strict)</div>
+      <div class="option-chip">Plutôt autonome</div>
+      <div class="option-chip">Peu importe</div>
+    </div>
+  </div>
+
+  <div class="question-block">
+    <h3>Quel budget annuel envisages-tu ?</h3>
+    <div class="option-grid" data-key="budget" data-multi="false">
+      <div class="option-chip">Faible (frais nationaux, quelques centaines d'euros)</div>
+      <div class="option-chip">Variable selon revenus (bourse/barème)</div>
+      <div class="option-chip">Élevé (plusieurs milliers à dizaines de milliers d'euros)</div>
+      <div class="option-chip">Peu importe</div>
+    </div>
+  </div>
+
+  <div class="question-block">
+    <h3>Souhaites-tu partir à l'étranger pendant tes études ?</h3>
+    <div class="option-grid" data-key="international" data-multi="false">
+      <div class="option-chip">Oui, si possible</div>
+      <div class="option-chip">Pas une priorité</div>
+    </div>
+  </div>
+
+  <div class="question-block">
+    <h3>Souhaites-tu viser une Grande École (admissions parallèles ou concours) ?</h3>
+    <div class="option-grid" data-key="grande_ecole" data-multi="false">
+      <div class="option-chip">Oui</div>
+      <div class="option-chip">Non / pas décidé</div>
+    </div>
+  </div>
+
+  <div class="question-block">
+    <h3>Souhaites-tu entrer rapidement dans la vie professionnelle ?</h3>
+    <div class="option-grid" data-key="vite_pro" data-multi="false">
+      <div class="option-chip">Oui, formation courte et professionnalisante</div>
+      <div class="option-chip">Non, je suis prêt à faire des études longues</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="submit-btn">Voir mes premières pistes</button>
+
+  <div class="recommendation-result" id="result">
+    <h2>Pistes à explorer</h2>
+    <p style="color:var(--text-soft); font-size:0.9rem;">Ce classement est calculé simplement à partir de tes réponses et des critères objectifs déjà renseignés pour chaque formation (domaine, coût, international, type). Il ne remplace pas une recherche approfondie ni un conseil d'orientation.</p>
+    <div class="card-grid" id="result-cards" style="margin-top:1.5rem;"></div>
+  </div>
+</div>
+
+
+<div class="container">
+
+  <div class="related-links">
+    <h3>Pages liées</h3>
+    <ul>
+      <li><a href="formations.html">Parcourir toutes les formations</a></li>
+      <li><a href="comparateur.html">Comparer les formations retenues</a></li>
+      <li><a href="trajectoires.html">Voir aussi la voie ingénieur (CPGE scientifique, BUT)</a></li>
+      <li><a href="faq.html">Comment lire les données</a></li>
+      <li><a href="contact.html">Faire relire mes options gratuitement</a></li>
+    </ul>
+  </div>
+</div>
+
+<section class="cta-band">
+  <div class="container cta-band-inner">
+    <div>
+      <h2>Tu hésites entre plusieurs formations ?</h2>
+      <p>Demande ton bilan d'orientation gratuit : on met tes options côte à côte à partir des données sourcées du comparateur — sélectivité, coût réel, débouchés — en te disant clairement ce qui est documenté et ce qui ne l'est pas.</p>
+      <p class="cta-note">Réponse sous 48 h ouvrées. Sans engagement, sans revente de tes données.</p>
+    </div>
+    <div class="cta-band-actions">
+      <a href="contact.html" class="btn btn-accent btn-lg">Demander mon bilan gratuit</a>
+      <a href="faq.html" class="btn btn-ghost-light">Lire la FAQ</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="footer-brand">CapSup</div>
+        <p class="footer-tagline">Compare les formations. Comprends les débouchés. Construis ton parcours.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Explorer</h4>
+        <ul>
+          <li><a href="formations.html">Formations</a></li>
+          <li><a href="comparateur.html">Comparateur</a></li>
+          <li><a href="parcours.html">Mon parcours</a></li>
+          <li><a href="trajectoires.html">Trajectoires</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Comprendre</h4>
+        <ul>
+          <li><a href="faq.html">Questions fréquentes</a></li>
+          <li><a href="methodologie.html">Méthodologie</a></li>
+          <li><a href="methodologie.html#sources">Sources</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>CapSup</h4>
+        <ul>
+          <li><a href="contact.html">Demander un bilan</a></li>
+          <li><a href="methodologie.html#apropos">À propos</a></li>
+          <li><a href="politique.html">Politique de confidentialité</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 CapSup — chaque donnée est sourcée et datée, jamais estimée.</span>
+      <span><a href="politique.html">Politique de confidentialité</a> · <a href="contact.html">Contact</a></span>
+    </div>
+  </div>
+</footer>
+
+<div class="mobile-cta">
+  <a href="contact.html" class="btn btn-accent">Bilan gratuit</a>
+  <a href="comparateur.html" class="btn btn-ghost">Comparer</a>
+</div>
+
+<script src="app.js"></script>
+<script>
+document.getElementById('nav-search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value.trim()) {
+    window.location.href = 'formations.html?q=' + encodeURIComponent(e.target.value.trim());
+  }
+});
+
+const answers = {};
+
+document.querySelectorAll('.option-grid').forEach(grid => {
+  const key = grid.dataset.key;
+  const multi = grid.dataset.multi === 'true';
+  answers[key] = multi ? [] : null;
+  grid.querySelectorAll('.option-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (multi) {
+        chip.classList.toggle('selected');
+        answers[key] = Array.from(grid.querySelectorAll('.option-chip.selected')).map(c => c.textContent);
+      } else {
+        grid.querySelectorAll('.option-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        answers[key] = chip.textContent;
+      }
+    });
+  });
+});
+
+function score(item) {
+  let s = 0;
+  const domaines = answers.domaines || [];
+  if (domaines.length) {
+    const match = item.domaine.filter(d => domaines.includes(d)).length;
+    s += match * 3;
+  }
+  if (answers.type_pref && answers.type_pref !== 'Peu importe') {
+    const map = { 'Licence universitaire': 'Licence', 'BUT (professionnalisant)': 'BUT', 'Bachelor international': 'Bachelor', 'CPGE (concours)': 'CPGE', 'IEP / Sciences Po': 'IEP' };
+    if (map[answers.type_pref] === item.type) s += 3;
+  }
+  if (answers.budget === "Faible (frais nationaux, quelques centaines d'euros)" && item.frais_niveau === 'faible') s += 2;
+  if (answers.budget === 'Variable selon revenus (bourse/barème)' && item.frais_niveau === 'variable') s += 2;
+  if (answers.budget === "Élevé (plusieurs milliers à dizaines de milliers d'euros)" && item.frais_niveau === 'eleve') s += 2;
+  if (answers.international === 'Oui, si possible' && item.international_bool) s += 2;
+  if (answers.grande_ecole === 'Oui' && item.admissions_paralleles_bool) s += 2;
+  if (answers.vite_pro === 'Oui, formation courte et professionnalisante' && item.duree_annees <= 3) s += 1;
+  return s;
+}
+
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const data = await CapSup.loadData();
+  const ranked = data
+    .map(item => ({ item, s: score(item) }))
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 4)
+    .map(r => r.item);
+
+  const resultBox = document.getElementById('result');
+  const cards = document.getElementById('result-cards');
+  cards.innerHTML = ranked.map(item => CapSup.formationCard(item, { compare: false })).join('');
+  resultBox.classList.add('visible');
+  resultBox.scrollIntoView({ behavior: 'smooth' });
+});
+</script>
+</body>
+</html>

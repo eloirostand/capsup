@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demander un bilan d'orientation gratuit — CapSup</title>
+<meta name="description" content="Demande un bilan d'orientation gratuit : une comparaison écrite de tes formations post-bac, construite sur des données sourcées et datées.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Accueil","item":"https://capsup.netlify.app/index.html"},
+    {"@type":"ListItem","position":2,"name":"Demander un bilan"}
+]}
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">Cap<span>Sup</span></a>
+    <div class="nav-links">
+      <a href="index.html">Accueil</a>
+      <a href="formations.html">Formations</a>
+      <a href="comparateur.html">Comparer</a>
+      <a href="parcours.html">Mon parcours</a>
+      <a href="trajectoires.html">Trajectoires</a>
+    </div>
+    <input class="nav-search" type="text" id="nav-search-input" placeholder="Rechercher une formation">
+    <a href="contact.html" class="btn btn-accent btn-sm">Bilan gratuit</a>
+  </div>
+</nav>
+
+<nav class="breadcrumb" aria-label="Fil d'Ariane">
+  <div class="container">
+    <ol>
+        <li><a href="index.html">Accueil</a></li>
+        <li aria-current="page"><span>Demander un bilan</span></li>
+    </ol>
+  </div>
+</nav>
+
+<div class="container" style="padding: 2rem 0 0;">
+  <h1>Demande ton bilan d'orientation gratuit</h1>
+  <p style="color:var(--text-soft); max-width:64ch;">Dis-nous où tu en es et quelles formations tu envisages. On te renvoie une comparaison écrite de tes options, construite sur les données sourcées du comparateur — et on te dit explicitement ce qui n'est pas documenté publiquement.</p>
+</div>
+
+<div class="container form-layout">
+  <main>
+    <div class="form-card">
+      <h2 style="font-size:1.2rem;">Ton bilan personnalisé</h2>
+      <p style="color:var(--text-soft); font-size:0.92rem; margin-top:0;">Tous les champs marqués d'un * sont nécessaires pour te répondre utilement.</p>
+
+      <form name="bilan-orientation" method="POST" action="/merci" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="bilan-orientation">
+        <input type="hidden" name="subject" value="Nouvelle demande de bilan — %{formName}">
+        <p class="form-hp"><label>Ne pas remplir : <input name="bot-field"></label></p>
+
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label for="prenom">Prénom *</label>
+            <input type="text" id="prenom" name="prenom" required autocomplete="given-name">
+          </div>
+          <div class="form-row">
+            <label for="email">Adresse e-mail *</label>
+            <input type="email" id="email" name="email" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label for="niveau">Où en es-tu ? *</label>
+            <select id="niveau" name="niveau" required>
+              <option value="">Choisis une réponse…</option>
+              <option>Seconde</option>
+              <option>Première</option>
+              <option>Terminale</option>
+              <option>Déjà dans le supérieur (réorientation)</option>
+              <option>Parent ou accompagnant</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="echeance">Ton échéance</label>
+            <select id="echeance" name="echeance">
+              <option value="">Sans échéance précise</option>
+              <option>Avant la clôture des vœux Parcoursup</option>
+              <option>Dans les prochaines semaines</option>
+              <option>Pour l'année prochaine</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="formations">Quelles formations hésites-tu à comparer ? *
+            <span class="hint">Par exemple : « prépa ECG ou Licence Éco-Gestion à Assas », ou un domaine si tu n'as pas encore de liste.</span>
+          </label>
+          <textarea id="formations" name="formations" required placeholder="Ex. : CPGE ECG, Licence Sciences des Organisations à Dauphine, Bachelor Sciences Po…"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="critere">Ce qui compte le plus pour toi</label>
+          <select id="critere" name="critere">
+            <option value="">Je ne sais pas encore</option>
+            <option>Le coût de la formation</option>
+            <option>Les débouchés et la poursuite d'études</option>
+            <option>Les chances d'admission</option>
+            <option>L'international</option>
+            <option>Garder plusieurs portes ouvertes</option>
+          </select>
+        </div>
+
+        <label class="form-consent">
+          <input type="checkbox" name="consentement" value="oui" required>
+          <span>J'accepte que CapSup utilise ces informations pour me répondre. Elles ne sont ni revendues ni utilisées à d'autres fins — voir la <a href="politique.html">politique de confidentialité</a>. *</span>
+        </label>
+
+        <button type="submit" class="btn btn-accent btn-lg">Envoyer ma demande</button>
+      </form>
+    </div>
+
+    <div class="form-card" style="margin-top:1.5rem;">
+      <h2 style="font-size:1.2rem;">Être prévenu des nouvelles formations vérifiées</h2>
+      <p style="color:var(--text-soft); font-size:0.92rem; margin-top:0;">Le catalogue s'agrandit formation par formation. Reçois un e-mail quand de nouvelles fiches sourcées sont publiées — pas de newsletter hebdomadaire, seulement des ajouts réels.</p>
+
+      <form name="alerte-formations" method="POST" action="/merci" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="alerte-formations">
+        <input type="hidden" name="subject" value="Nouvelle inscription aux alertes — %{formName}">
+        <p class="form-hp"><label>Ne pas remplir : <input name="bot-field"></label></p>
+
+        <div class="form-row">
+          <label for="email-alerte">Adresse e-mail *</label>
+          <input type="email" id="email-alerte" name="email" required autocomplete="email">
+        </div>
+
+        <label class="form-consent">
+          <input type="checkbox" name="consentement" value="oui" required>
+          <span>J'accepte de recevoir un e-mail lors de la publication de nouvelles fiches. Désinscription possible à tout moment. *</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary">M'inscrire aux alertes</button>
+      </form>
+    </div>
+  </main>
+
+  <aside>
+    <div class="aside-card">
+      <h3>Ce que tu reçois</h3>
+      <ul>
+        <li>Un tableau comparatif de tes options, critère par critère</li>
+        <li>La source et l'année de chaque chiffre avancé</li>
+        <li>La liste explicite de ce qui n'est pas publié (insertion, salaires, coût de la vie)</li>
+        <li>Les passerelles et admissions parallèles depuis chaque formation</li>
+      </ul>
+    </div>
+
+    <div class="aside-card" style="margin-top:1.25rem;">
+      <h3>Ce que nous ne faisons pas</h3>
+      <p style="color:var(--text-soft); font-size:0.9rem; margin:0;">Pas de classement « meilleure formation », pas de chiffre inventé pour combler un vide, pas de partenariat rémunéré avec un établissement. Quand une donnée n'existe pas publiquement, nous l'écrivons.</p>
+      <p style="margin:0.9rem 0 0;"><a href="methodologie.html">Lire la méthodologie</a></p>
+    </div>
+
+    <div class="aside-card" style="margin-top:1.25rem;">
+      <h3>Avant d'écrire</h3>
+      <p style="color:var(--text-soft); font-size:0.9rem; margin:0 0 0.75rem;">Une partie des réponses est peut-être déjà en ligne :</p>
+      <ul>
+        <li><a href="faq.html">Les questions fréquentes</a></li>
+        <li><a href="comparateur.html">Le comparateur en libre accès</a></li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="footer-brand">CapSup</div>
+        <p class="footer-tagline">Compare les formations. Comprends les débouchés. Construis ton parcours.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Explorer</h4>
+        <ul>
+          <li><a href="formations.html">Formations</a></li>
+          <li><a href="comparateur.html">Comparateur</a></li>
+          <li><a href="parcours.html">Mon parcours</a></li>
+          <li><a href="trajectoires.html">Trajectoires</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Comprendre</h4>
+        <ul>
+          <li><a href="faq.html">Questions fréquentes</a></li>
+          <li><a href="methodologie.html">Méthodologie</a></li>
+          <li><a href="methodologie.html#sources">Sources</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>CapSup</h4>
+        <ul>
+          <li><a href="contact.html">Demander un bilan</a></li>
+          <li><a href="methodologie.html#apropos">À propos</a></li>
+          <li><a href="politique.html">Politique de confidentialité</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 CapSup — chaque donnée est sourcée et datée, jamais estimée.</span>
+      <span><a href="politique.html">Politique de confidentialité</a> · <a href="contact.html">Contact</a></span>
+    </div>
+  </div>
+</footer>
+
+<div class="mobile-cta">
+  <a href="contact.html" class="btn btn-accent">Bilan gratuit</a>
+  <a href="comparateur.html" class="btn btn-ghost">Comparer</a>
+</div>
+
+<script>
+document.getElementById('nav-search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value.trim()) {
+    window.location.href = 'formations.html?q=' + encodeURIComponent(e.target.value.trim());
+  }
+});
+</script>
+</body>
+</html>

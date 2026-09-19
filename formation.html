@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Formation — CapSup</title>
+<meta name="description" content="Fiche formation CapSup : sélectivité, coût, reconnaissance du diplôme, international et débouchés, avec la source et l'année de chaque donnée.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Accueil","item":"https://capsup.netlify.app/index.html"},
+    {"@type":"ListItem","position":2,"name":"Formations","item":"https://capsup.netlify.app/formations.html"},
+    {"@type":"ListItem","position":3,"name":"Formation"}
+]}
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html">Cap<span>Sup</span></a>
+    <div class="nav-links">
+      <a href="index.html">Accueil</a>
+      <a href="formations.html" class="active">Formations</a>
+      <a href="comparateur.html">Comparer</a>
+      <a href="parcours.html">Mon parcours</a>
+      <a href="trajectoires.html">Trajectoires</a>
+    </div>
+    <input class="nav-search" type="text" id="nav-search-input" placeholder="Rechercher une formation">
+    <a href="contact.html" class="btn btn-accent btn-sm">Bilan gratuit</a>
+  </div>
+</nav>
+
+<nav class="breadcrumb" aria-label="Fil d'Ariane">
+  <div class="container">
+    <ol>
+        <li><a href="index.html">Accueil</a></li>
+        <li><a href="formations.html">Formations</a></li>
+        <li aria-current="page"><span id="breadcrumb-current">Formation</span></li>
+    </ol>
+  </div>
+</nav>
+
+<div id="content"></div>
+
+
+<section class="cta-band">
+  <div class="container cta-band-inner">
+    <div>
+      <h2>Tu hésites entre plusieurs formations ?</h2>
+      <p>Demande ton bilan d'orientation gratuit : on met tes options côte à côte à partir des données sourcées du comparateur — sélectivité, coût réel, débouchés — en te disant clairement ce qui est documenté et ce qui ne l'est pas.</p>
+      <p class="cta-note">Réponse sous 48 h ouvrées. Sans engagement, sans revente de tes données.</p>
+    </div>
+    <div class="cta-band-actions">
+      <a href="contact.html" class="btn btn-accent btn-lg">Demander mon bilan gratuit</a>
+      <a href="faq.html" class="btn btn-ghost-light">Lire la FAQ</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="footer-brand">CapSup</div>
+        <p class="footer-tagline">Compare les formations. Comprends les débouchés. Construis ton parcours.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Explorer</h4>
+        <ul>
+          <li><a href="formations.html">Formations</a></li>
+          <li><a href="comparateur.html">Comparateur</a></li>
+          <li><a href="parcours.html">Mon parcours</a></li>
+          <li><a href="trajectoires.html">Trajectoires</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Comprendre</h4>
+        <ul>
+          <li><a href="faq.html">Questions fréquentes</a></li>
+          <li><a href="methodologie.html">Méthodologie</a></li>
+          <li><a href="methodologie.html#sources">Sources</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>CapSup</h4>
+        <ul>
+          <li><a href="contact.html">Demander un bilan</a></li>
+          <li><a href="methodologie.html#apropos">À propos</a></li>
+          <li><a href="politique.html">Politique de confidentialité</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 CapSup — chaque donnée est sourcée et datée, jamais estimée.</span>
+      <span><a href="politique.html">Politique de confidentialité</a> · <a href="contact.html">Contact</a></span>
+    </div>
+  </div>
+</footer>
+
+<div class="mobile-cta">
+  <a href="contact.html" class="btn btn-accent">Bilan gratuit</a>
+  <a href="comparateur.html" class="btn btn-ghost">Comparer</a>
+</div>
+
+<script src="app.js"></script>
+<script>
+document.getElementById('nav-search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value.trim()) {
+    window.location.href = 'formations.html?q=' + encodeURIComponent(e.target.value.trim());
+  }
+});
+
+const RELIABILITY = {
+  officielle: { cls: 'reliability-officielle', label: '🟢 Source officielle' },
+  institutionnelle: { cls: 'reliability-institutionnelle', label: '🟡 Source institutionnelle' }
+};
+
+/* Badge de fiabilité attaché à un champ précis, quand la source est connue. */
+function rel(item, field) {
+  const info = (item.fiabilite || {})[field];
+  if (!info) return '';
+  const v = RELIABILITY[info.niveau];
+  if (!v) return '';
+  const title = `${v.label} — ${info.annee}`;
+  return ` <a class="reliability ${v.cls}" href="${info.url}" target="_blank" rel="noopener" title="${title}">${v.label.slice(0, 2)} ${info.annee}</a>`;
+}
+
+/* Autres formations du même type ou du même établissement, pour le maillage interne. */
+function relatedFormations(item, all) {
+  const related = all
+    .filter(f => f.id !== item.id)
+    .map(f => {
+      let score = 0;
+      if (f.etablissement === item.etablissement) score += 2;
+      if (f.type === item.type) score += 2;
+      if (f.domaine.some(d => item.domaine.includes(d))) score += 1;
+      return { f, score };
+    })
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(x => x.f);
+
+  if (related.length === 0) return '';
+  return `
+    <section class="section" style="border-bottom:none;">
+      <div class="container">
+        <h2>Formations proches</h2>
+        <div class="helpful-links" style="margin-top:1rem;">
+          ${related.map(f => `
+            <a class="helpful-link" href="formation.html?id=${f.id}">
+              <strong>${f.nom}</strong>
+              <span>${f.etablissement} — ${f.duree}, ${f.frais_scolarite}</span>
+            </a>`).join('')}
+        </div>
+        <p style="margin-top:1.25rem;">
+          <a href="comparateur.html?ids=${[item.id, ...related.map(f => f.id)].slice(0, 4).join(',')}">Comparer ces formations côte à côte</a>
+          · <a href="formations.html">Revenir au catalogue</a>
+        </p>
+      </div>
+    </section>`;
+}
+
+function trajectoryFlow(item) {
+  // Représentation simple, sans donnée inventée : basée sur poursuite_etudes / admissions_paralleles déclarés
+  const steps = [item.nom];
+  if (item.admissions_paralleles_bool) steps.push('Admissions parallèles');
+  if (/master/i.test(item.poursuite_etudes || '')) steps.push('Master');
+  if (/concours/i.test(item.poursuite_etudes || '') || /concours/i.test(item.selection || '')) steps.push('Concours');
+  steps.push('Emploi');
+  return steps.map((s, i) => `
+    ${i > 0 ? '<span class="flow-arrow">→</span>' : ''}
+    <span class="flow-step">${s}</span>
+  `).join('');
+}
+
+function sourcesList(item) {
+  if (!item.sources || item.sources.length === 0) {
+    return '<p>Donnée non disponible.</p>';
+  }
+  return `
+    <ul class="sources-list">
+      ${item.sources.map(s => `<li><a href="${s.url}" target="_blank" rel="noopener">${s.label}</a></li>`).join('')}
+    </ul>
+    <p class="verified-date">Vérifié le ${item.date_verification}</p>
+  `;
+}
+
+(async () => {
+  const data = await CapSup.loadData();
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const item = CapSup.getById(id);
+  const content = document.getElementById('content');
+
+  if (!item) {
+    document.getElementById('breadcrumb-current').textContent = 'Formation introuvable';
+    document.getElementById('page-title').textContent = 'Formation introuvable — CapSup';
+    content.innerHTML = `
+      <div class="container status-page">
+        <div class="code">404</div>
+        <h1>Cette fiche formation n'existe pas</h1>
+        <p>L'identifiant demandé ne correspond à aucune formation du catalogue. Il a peut-être changé, ou le lien est incomplet.</p>
+        <div class="status-actions">
+          <a href="formations.html" class="btn btn-primary">Voir les ${data.length} formations</a>
+          <a href="comparateur.html" class="btn btn-ghost">Ouvrir le comparateur</a>
+        </div>
+        <div class="helpful-links">
+          ${data.slice(0, 3).map(f => `
+            <a class="helpful-link" href="formation.html?id=${f.id}">
+              <strong>${f.nom}</strong>
+              <span>${f.etablissement} — ${f.duree}</span>
+            </a>`).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('page-title').textContent = item.nom + ' — ' + item.etablissement + ' — CapSup';
+  document.getElementById('breadcrumb-current').textContent = item.nom;
+
+  content.innerHTML = `
+    <header class="formation-header">
+      <div class="container">
+        ${item.demo ? `<div class="demo-flag">Donnée de démonstration — informations marquées « Donnée à vérifier » tant qu'elles n'ont pas été confirmées auprès de sources officielles.</div>` : ''}
+        <nav aria-label="Retour" style="font-size:0.88rem; margin-bottom:0.5rem;"><a href="formations.html">← Toutes les formations</a></nav>
+        <span class="type-tag">${item.type}</span>
+        <h1 style="margin-top:0.6rem;">${item.nom}</h1>
+        <p style="color:var(--text-soft); font-size:1.05rem;">${item.etablissement} — ${item.ville}</p>
+        <div class="summary-cards">
+          <div class="summary-card"><div class="label">Sélectivité</div><div class="value">${item.taux_acces}${rel(item, 'taux_acces')}</div></div>
+          <div class="summary-card"><div class="label">Coût</div><div class="value">${item.frais_scolarite}${rel(item, 'frais_scolarite')}</div></div>
+          <div class="summary-card"><div class="label">Durée</div><div class="value">${item.duree}</div></div>
+          <div class="summary-card"><div class="label">ECTS</div><div class="value">${item.ects ?? 'Donnée à vérifier'}</div></div>
+          <div class="summary-card"><div class="label">Diplôme</div><div class="value">${item.diplome}${rel(item, 'diplome')}</div></div>
+          <div class="summary-card"><div class="label">International</div><div class="value">${item.international_bool === true ? 'Oui' : item.international_bool === false ? 'Non' : 'À vérifier'}</div></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="container">
+        <h2>La formation</h2>
+        <p>${item.description || 'Donnée non disponible.'}</p>
+        ${item.matieres && item.matieres.length ? `<p><strong>Principales matières :</strong> ${item.matieres.join(', ')}${rel(item, 'matieres')}</p>` : `<p><strong>Principales matières :</strong> Donnée non disponible</p>`}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Admission</h2>
+        <p><strong>Parcoursup :</strong> ${item.parcoursup ? 'Oui' : 'Non — admission directe hors Parcoursup'}</p>
+        <p><strong>Sélectivité :</strong> ${item.selection}${rel(item, 'selection')}</p>
+        <p><strong>Places :</strong> ${item.nombre_places}${rel(item, 'nombre_places')} — <strong>Candidats :</strong> ${item.nombre_candidats}${rel(item, 'nombre_candidats')}</p>
+        <p><strong>Taux d'accès :</strong> ${item.taux_acces}${rel(item, 'taux_acces')}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Débouchés</h2>
+        <p><strong>Poursuite d'études :</strong> ${item.poursuite_etudes}${rel(item, 'poursuite_etudes')}</p>
+        <p><strong>Masters accessibles :</strong> ${item.masters}</p>
+        <p><strong>Métiers :</strong> ${CapSup.escapeList(item.debouches)}</p>
+        <p><strong>Insertion professionnelle :</strong> ${item.insertion}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Admissions parallèles</h2>
+        <p>${item.admissions_paralleles}</p>
+        <div class="flow">${trajectoryFlow(item)}</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>International</h2>
+        <p>${item.international}${rel(item, 'international')}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Coût</h2>
+        <p><strong>Frais de scolarité :</strong> ${item.frais_scolarite}${rel(item, 'frais_scolarite')}</p>
+        <p><strong>Coût total estimé :</strong> ${item.cout_total_estime}${rel(item, 'cout_total_estime')}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Reconnaissance du diplôme</h2>
+        <p><strong>Diplôme national :</strong> ${item.diplome_national}${rel(item, 'diplome_national')}</p>
+        <p><strong>Grade de licence :</strong> ${item.grade_licence}${rel(item, 'grade_licence')}</p>
+        <p><strong>Visa :</strong> ${item.visa}${rel(item, 'visa')}</p>
+        <p><strong>RNCP :</strong> ${item.rncp}${rel(item, 'rncp')}</p>
+        <p><strong>ECTS :</strong> ${item.ects ?? 'Donnée à vérifier'}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Sources</h2>
+        ${sourcesList(item)}
+        <p style="color:var(--text-soft); font-size:0.82rem; margin-top:1rem;">
+          Les repères <span class="reliability reliability-officielle">🟢</span> indiquent une source officielle (établissement, Parcoursup, Onisep, RNCP),
+          <span class="reliability reliability-institutionnelle">🟡</span> une source institutionnelle ou secondaire.
+          Un champ « Donnée non disponible » signale une information qui n'est pas publiée — voir la
+          <a href="methodologie.html">méthodologie</a> et la <a href="faq.html">FAQ</a>.
+        </p>
+      </div>
+    </section>
+
+    ${relatedFormations(item, data)}
+  `;
+})();
+</script>
+</body>
+</html>
