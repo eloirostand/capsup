@@ -754,3 +754,25 @@ button.cmp-chip-more:hover{background:#e7e0d2}
 .csx-tog b{font-weight:600;color:#3b52d9;margin-left:.35rem}.csx-tog .material-symbols-outlined{font-size:20px;color:#3b52d9}
 @media (min-width:1024px){.csx-tog{display:none}}
 @media (max-width:1023px){.cs-explorer aside:not(.csx-open)>div:not(:first-child){display:none!important}}
+/* ===== v50 : notes du bilan + écran de fin ===== */
+.cb-notes{grid-template-columns:repeat(auto-fill,minmax(min(100%,10.5rem),1fr))}
+.cb-note{min-width:0;overflow:hidden}
+.cb-note-h{align-items:flex-start;min-width:0}
+.cb-note-n{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.cb-note-h .cb-lsel{flex:1 1 auto;min-width:0;width:0;max-width:none}
+.cb-note-v{flex:0 0 auto;min-width:0;line-height:1.1}
+.cb-note .cb-range{width:100%;min-width:0;box-sizing:border-box}
+.cb-note-f{gap:.3rem}
+.cs-end-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.25rem;align-items:start;margin:1rem 0 1.25rem}
+.cs-end-grid.cs-end-one{grid-template-columns:minmax(0,1fr)}
+.cs-end-grid .cs-pistes,.cs-end-grid .cs-incl{margin:0}
+@media(max-width:860px){.cs-end-grid{grid-template-columns:minmax(0,1fr)}}
+.cs-incl{background:#fff;color:#1e232a;border:1.5px solid #c9d4f6;box-shadow:0 4px 18px rgba(43,85,232,.08);padding:1.25rem 1.3rem}
+.cs-incl-ic{font-size:2rem;color:#2B55E8}
+.cs-incl-k{color:#2B55E8}
+.cs-incl-t{color:#1e232a;font-size:1.15rem}
+.cs-incl-d{color:#4b5260;font-size:.92rem}
+.cs-incl-d strong{color:#1e232a;overflow-wrap:anywhere}
+.cs-incl-due{background:#fff3d6;color:#8a5a00;border:1px solid #ffd27a}
+.cs-incl-l li{color:#1e232a;border-top:1px solid #eef0f5;font-size:.9rem}
+.cs-incl-l li:before{color:#2B55E8}
