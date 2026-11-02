@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient (Chaleureux & Moderne) -->
+    <linearGradient id="instaBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B"/>
+      <stop offset="50%" stop-color="#312E81"/>
+      <stop offset="100%" stop-color="#3B52D9"/>
+    </linearGradient>
+
+    <!-- Warm Accent Gradient for Cap -->
+    <linearGradient id="warmGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Soft Ambient Glow -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6366F1" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1E1B4B" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="shadowFilter" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Background Base (adapté au crop circulaire Instagram 1:1) -->
+  <rect width="512" height="512" fill="url(#instaBg)"/>
+  <circle cx="256" cy="256" r="230" fill="url(#centerGlow)"/>
+
+  <!-- Outer Safe Zone Ring for Instagram Profile Circle -->
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="3"/>
+
+  <!-- Group with Drop Shadow -->
+  <g filter="url(#shadowFilter)">
+    <!-- Stylized "C" Body (Thick, rounded, friendly geometry) -->
+    <!-- The C sweeps from top right, curves around left, down to bottom right -->
+    <path d="M 330 195 
+             C 315 170 288 152 250 152
+             C 185 152 136 200 136 270
+             C 136 340 185 388 252 388
+             C 292 388 322 368 338 340
+             L 305 315
+             C 292 334 274 345 250 345
+             C 210 345 180 312 180 270
+             C 180 228 210 195 250 195
+             C 272 195 289 205 300 220
+             Z" 
+          fill="#FFFFFF" />
+
+    <!-- CapSup Signature Graduation Mortier (Academic Cap perched atop the C) -->
+    <g transform="translate(195, 88)">
+      <!-- Cap Diamond (Top) -->
+      <polygon points="120,40 45,68 120,95 195,68" fill="url(#warmGold)"/>
+      <!-- Cap Base (Skull cap) -->
+      <path d="M65,77 C65,102 90,118 120,118 C150,118 175,102 175,77 L120,96 Z" fill="#F59E0B" fill-opacity="0.9"/>
+      <!-- Tassel cord & bead -->
+      <path d="M185,73 C185,110 178,118 172,120" stroke="#FDE68A" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <circle cx="170" cy="122" r="6" fill="#FEF3C7"/>
+    </g>
+
+    <!-- Warm Sparkle Dot inside C aperture -->
+    <circle cx="295" cy="270" r="10" fill="url(#warmGold)"/>
+  </g>
+</svg>

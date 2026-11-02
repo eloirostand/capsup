@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="brandGradH" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <rect width="1200" height="380" rx="24" fill="#FFFFFF" />
+
+  <g transform="translate(100, 70)" filter="url(#logoShadow)">
+    <!-- Symbol / Emblem (240x240) -->
+    <g transform="translate(0, 0) scale(1.2)">
+      <!-- Cap Ascent: High-Precision C with Dynamic 45° Upward Summit Arrow -->
+      <g id="emblem-cap-ascent">
+        <!-- Main C Body -->
+        <path d="M 152 64 C 138 42 116 28 88 28 C 48 28 18 60 18 100 C 18 140 48 172 88 172 C 120 172 144 154 156 128 L 126 114 C 118 130 104 140 88 140 C 64 140 50 122 50 100 C 50 78 64 60 88 60 C 104 60 118 68 128 82 Z" 
+              fill="#2563EB" />
+        <!-- Rising Summit Chevron Arrow (Prendre le Cap / Ascension) -->
+        <path d="M 126 24 L 182 24 L 182 80 L 160 58 L 118 100 L 96 78 L 138 36 Z" 
+              fill="#0284C7" />
+        <!-- Forward Velocity Dot -->
+        <circle cx="166" cy="116" r="10" fill="#0284C7" />
+      </g>
+    </g>
+
+    <!-- Wordmark & Tagline -->
+    <g transform="translate(290, 85)">
+      <!-- Brand Name -->
+      <text x="0" y="56" 
+            font-family="Outfit, 'Plus Jakarta Sans', system-ui, sans-serif" 
+            font-size="82" 
+            font-weight="800" 
+            letter-spacing="0.02em" 
+            fill="#0F172A">
+        CapSup
+      </text>
+
+      <!-- Tagline / Descriptor -->
+      <text x="4" y="98" 
+            font-family="'Plus Jakarta Sans', system-ui, sans-serif" 
+            font-size="16" 
+            font-weight="600" 
+            letter-spacing="0.28em" 
+            fill="#2563EB">
+        ACADÉMIE D’EXCELLENCE &amp; CONSEIL
+      </text>
+    </g>
+  </g>
+</svg>

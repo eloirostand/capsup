@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" rx="48" fill="#0F172A"/>
+  <!-- Cap Ascent: High-Precision C with Dynamic 45° Upward Summit Arrow -->
+  <g id="emblem-cap-ascent">
+    <!-- Main C Body -->
+    <path d="M 152 64 C 138 42 116 28 88 28 C 48 28 18 60 18 100 C 18 140 48 172 88 172 C 120 172 144 154 156 128 L 126 114 C 118 130 104 140 88 140 C 64 140 50 122 50 100 C 50 78 64 60 88 60 C 104 60 118 68 128 82 Z" 
+          fill="#3B82F6" />
+    <!-- Rising Summit Chevron Arrow -->
+    <path d="M 126 24 L 182 24 L 182 80 L 160 58 L 118 100 L 96 78 L 138 36 Z" 
+          fill="#38BDF8" />
+    <!-- Forward Velocity Dot -->
+    <circle cx="166" cy="116" r="10" fill="#38BDF8" />
+  </g>
+</svg>

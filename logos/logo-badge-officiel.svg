@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="badgeBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="60%" stop-color="#1E1B4B"/>
+      <stop offset="100%" stop-color="#312E81"/>
+    </linearGradient>
+
+    <!-- Golden Cap Gradient -->
+    <linearGradient id="badgeGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Indigo Cap Base -->
+    <linearGradient id="badgeIndigo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#3B52D9"/>
+    </linearGradient>
+
+    <!-- Inner Ambient Glow -->
+    <radialGradient id="badgeGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="badgeShadow" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base for App Icon / Social Avatar -->
+  <rect width="512" height="512" rx="128" fill="url(#badgeBg)"/>
+  <rect width="504" height="504" x="4" y="4" rx="124" stroke="#4338CA" stroke-opacity="0.5" stroke-width="4"/>
+  <circle cx="256" cy="220" r="180" fill="url(#badgeGlow)"/>
+
+  <!-- Main Emblem with Drop Shadow -->
+  <g filter="url(#badgeShadow)">
+    <!-- Mortier Diamond Top (Gold) -->
+    <polygon points="256,120 100,195 256,268 412,195" fill="url(#badgeGold)"/>
+
+    <!-- Mortier Base (Indigo) -->
+    <path d="M 136 235 
+             V 305 
+             C 136 355 190 380 256 380 
+             C 322 380 376 355 376 305 
+             V 235 
+             L 256 286 
+             Z" 
+          fill="url(#badgeIndigo)"/>
+
+    <!-- Tassel cord and bead -->
+    <path d="M 390 208 Q 412 280 378 316" stroke="#FEF3C7" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="372" cy="324" r="16" fill="#FDE68A"/>
+
+    <!-- Center Diamond Pin -->
+    <polygon points="256,182 268,195 256,208 244,195" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Clean Subtext inside Badge -->
+  <text x="256" y="445" font-family="'Plus Jakarta Sans', 'Outfit', sans-serif" font-weight="800" font-size="44" fill="#FFFFFF" text-anchor="middle" letter-spacing="-1">
+    Cap<tspan fill="#60A5FA">Sup</tspan>
+  </text>
+</svg>

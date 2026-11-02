@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <style>
+      /* Smooth infinite animations for social media */
+      @keyframes floatMovement {
+        0%, 100% {
+          transform: translateY(0px) rotate(0deg);
+        }
+        50% {
+          transform: translateY(-12px) rotate(1deg);
+        }
+      }
+
+      @keyframes swingTassel {
+        0%, 100% {
+          transform: rotate(0deg);
+        }
+        25% {
+          transform: rotate(8deg);
+        }
+        75% {
+          transform: rotate(-8deg);
+        }
+      }
+
+      @keyframes pulseAura {
+        0%, 100% {
+          opacity: 0.35;
+          transform: scale(0.96);
+        }
+        50% {
+          opacity: 0.7;
+          transform: scale(1.05);
+        }
+      }
+
+      @keyframes rotateRing {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes shimmerGlow {
+        0%, 100% {
+          stop-color: #3B52D9;
+        }
+        50% {
+          stop-color: #6366F1;
+        }
+      }
+
+      @keyframes sparkPulse {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 0.85;
+        }
+        50% {
+          transform: scale(1.4);
+          opacity: 1;
+        }
+      }
+
+      .floating-emblem {
+        animation: floatMovement 4s ease-in-out infinite;
+        transform-origin: 400px 320px;
+      }
+
+      .swinging-tassel {
+        animation: swingTassel 3.5s ease-in-out infinite;
+        transform-origin: 490px 290px;
+      }
+
+      .pulse-glow {
+        animation: pulseAura 3s ease-in-out infinite;
+        transform-origin: 400px 320px;
+      }
+
+      .orbit-ring {
+        animation: rotateRing 16s linear infinite;
+        transform-origin: 400px 320px;
+      }
+
+      .sparkle {
+        animation: sparkPulse 2s ease-in-out infinite;
+        transform-origin: 570px 480px;
+      }
+    </style>
+
+    <!-- Deep Modern Gradient Background -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090D16"/>
+      <stop offset="45%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
+    </linearGradient>
+
+    <!-- Glowing Accent Gradient -->
+    <radialGradient id="radialAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#3B52D9" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="40%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Cobalt Gradient -->
+    <linearGradient id="cobaltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="50%" stop-color="#3B52D9"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="glowEffect" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas (Format carré 800x800 parfait pour Instagram, LinkedIn, TikTok, X) -->
+  <rect width="800" height="800" rx="48" fill="url(#bgGrad)"/>
+
+  <!-- Ambient Light Pulse -->
+  <circle cx="400" cy="320" r="260" fill="url(#radialAura)" class="pulse-glow"/>
+
+  <!-- Rotating Orbit Rings (Dashed technological / academic compass) -->
+  <g class="orbit-ring" opacity="0.28">
+    <circle cx="400" cy="320" r="210" fill="none" stroke="#60A5FA" stroke-width="2" stroke-dasharray="14 18"/>
+    <circle cx="400" cy="320" r="235" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="6 24"/>
+    <circle cx="610" cy="320" r="5" fill="#F59E0B"/>
+    <circle cx="190" cy="320" r="4" fill="#60A5FA"/>
+  </g>
+
+  <!-- Floating Center Emblem Group -->
+  <g class="floating-emblem" filter="url(#softShadow)">
+    <!-- Base Squircle Container -->
+    <rect x="270" y="190" width="260" height="260" rx="64" fill="#181F38" stroke="#334155" stroke-width="2.5"/>
+    <rect x="274" y="194" width="252" height="252" rx="60" fill="url(#bgGrad)" fill-opacity="0.9"/>
+
+    <!-- Mortier Diamond Cap (Top polygon) -->
+    <g filter="url(#glowEffect)">
+      <polygon points="400,230 295,282 400,332 505,282" fill="url(#goldGrad)"/>
+    </g>
+
+    <!-- Lower Mortier Cap Body (Blue gradient base) -->
+    <path d="M 325 308 
+             L 325 348 
+             C 325 385 365 408 400 408 
+             C 435 408 475 385 475 348 
+             L 475 308 
+             L 400 344 
+             Z" 
+          fill="url(#cobaltGrad)"/>
+
+    <!-- Tassel with pendular swinging animation -->
+    <g class="swinging-tassel">
+      <path d="M 490 286 Q 498 335 480 370" fill="none" stroke="#FEF3C7" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="478" cy="376" r="8" fill="#FDE68A"/>
+      <!-- Tassel threads fringe -->
+      <path d="M 473 384 L 471 404 M 478 384 L 478 406 M 483 384 L 485 403" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Core Center Diamond Button -->
+    <polygon points="400,270 408,282 400,294 392,282" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Brand Typography: CapSup -->
+  <g transform="translate(400, 560)" text-anchor="middle">
+    <text font-family="'Plus Jakarta Sans', 'Outfit', 'Inter', -apple-system, sans-serif" font-weight="800" font-size="76" letter-spacing="-1">
+      <tspan fill="#FFFFFF">Cap</tspan>
+      <tspan fill="#60A5FA">S</tspan>
+      <tspan fill="#818CF8">u</tspan>
+      <tspan fill="#A5B4FC">p</tspan>
+    </text>
+
+    <!-- Tagline -->
+    <text y="58" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-weight="600" font-size="20" fill="#94A3B8" letter-spacing="4">
+      ORIENTATION • SÉLECTIVITÉ • INSERTION
+    </text>
+  </g>
+
+  <!-- Animated Sparkle Accent on top right of brand -->
+  <g class="sparkle" transform="translate(565, 520)">
+    <path d="M 0,-14 L 3,-4 L 13,0 L 3,4 L 0,14 L -3,4 L -13,0 L -3,-4 Z" fill="#FBBF24"/>
+  </g>
+</svg>

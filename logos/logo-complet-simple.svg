@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160" fill="none">
+  <defs>
+    <!-- Emblem Background Gradient -->
+    <linearGradient id="emblemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B"/>
+      <stop offset="100%" stop-color="#312E81"/>
+    </linearGradient>
+
+    <!-- Golden Cap Gradient -->
+    <linearGradient id="capGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Indigo Cap Base -->
+    <linearGradient id="capIndigo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#3B52D9"/>
+    </linearGradient>
+
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <!-- Left Emblem (Rounded Squircle Icon) -->
+  <g transform="translate(30, 25)" filter="url(#cardShadow)">
+    <rect width="110" height="110" rx="30" fill="url(#emblemGrad)"/>
+    <rect width="110" height="110" rx="30" stroke="#4338CA" stroke-width="1.5" fill="none"/>
+
+    <!-- Mortier Diamond Top -->
+    <polygon points="55,27 20,44 55,61 90,44" fill="url(#capGold)"/>
+
+    <!-- Mortier Base -->
+    <path d="M 28 53 
+             V 69 
+             C 28 80 40 86 55 86 
+             C 70 86 82 80 82 69 
+             V 53 
+             L 55 65 
+             Z" 
+          fill="url(#capIndigo)"/>
+
+    <!-- Tassel cord and bead -->
+    <path d="M 85 47 Q 90 64 82 72" stroke="#FDE68A" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <circle cx="82" cy="74" r="3.5" fill="#FEF3C7"/>
+
+    <!-- Center Diamond Pin -->
+    <polygon points="55,41 58,45 55,49 52,45" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Typographic Wordmark -->
+  <!-- "Cap" in deep slate navy -->
+  <text x="165" y="94" font-family="'Plus Jakarta Sans', 'Outfit', 'Inter', -apple-system, sans-serif" font-weight="800" font-size="64" letter-spacing="-1.5" fill="#0F172A">
+    Cap<tspan fill="#3B52D9">Sup</tspan>
+  </text>
+
+  <!-- Golden Period Accent -->
+  <circle cx="432" cy="88" r="6" fill="#F59E0B"/>
+
+  <!-- Sub-label / Tagline -->
+  <text x="168" y="124" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-weight="600" font-size="12.5" letter-spacing="3.5" fill="#64748B">
+    ORIENTATION • SÉLECTIVITÉ • DONNÉES CLAIRES
+  </text>
+</svg>
