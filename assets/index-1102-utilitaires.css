@@ -776,3 +776,12 @@ button.cmp-chip-more:hover{background:#e7e0d2}
 .cs-incl-due{background:#fff3d6;color:#8a5a00;border:1px solid #ffd27a}
 .cs-incl-l li{color:#1e232a;border-top:1px solid #eef0f5;font-size:.9rem}
 .cs-incl-l li:before{color:#2B55E8}
+/* ===== v54 : retour en haut, lien d'évitement, impression ===== */
+.cs-skip{position:fixed;left:12px;top:-60px;z-index:100;background:#2B55E8;color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;text-decoration:none;transition:top .15s}
+.cs-skip:focus{top:12px;outline:3px solid #FFB020}
+.cs-top{position:fixed;left:16px;bottom:16px;z-index:45;width:44px;height:44px;border-radius:999px;border:1px solid rgba(43,85,232,.25);background:#fff;color:#2B55E8;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(20,30,60,.15);cursor:pointer;opacity:0;pointer-events:none;transform:translateY(8px);transition:opacity .2s,transform .2s}
+.cs-top.on{opacity:1;pointer-events:auto;transform:none}
+.cs-top:hover{background:#2B55E8;color:#fff}
+.cs-top:focus-visible{outline:3px solid #FFB020;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.cs-top,.cs-skip{transition:none}}
+@media print{header,footer,nav,.cs-top,.cs-skip,button{display:none!important}body{background:#fff!important}main,#root{padding-top:0!important;margin-top:0!important}*{box-shadow:none!important;animation:none!important;transition:none!important}.cf-box,section{break-inside:avoid}a[href^="http"]::after{content:" (" attr(href) ")";font-size:9pt;color:#555;word-break:break-all}}
