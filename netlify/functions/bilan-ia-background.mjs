@@ -31,8 +31,7 @@ function ligneIndex(e) {
     e.selectivityRate != null ? e.selectivityRate + " %" : "?", e.feesDisplay || "?", e.durationLabel || ""].join(" | ");
 }
 
-// Textes longs coupés : réduit les jetons d'entrée de l'étape 2 (le contrôle utilise les mêmes fiches coupées).
-const court = (t, n = 700) => t == null ? t : (typeof t === "string" ? (t.length > n ? t.slice(0, n) + "…" : t) : court(JSON.stringify(t), n));
+const court = t => t; // pas de coupe : textes complets (décision d'Eloi, 04/11)
 function ficheCompacte(e) {
   const L = e.legacy || {};
   const F = L.fiabilite || {};
