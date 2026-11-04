@@ -187,6 +187,7 @@ export const handler = async (event) => {
     action: "brouillon", token: BILAN_TOKEN, id: String(id || ""), to: email, prenom,
     sujet: "Ton bilan d'orientation CapSup",
     html: bilan && !erreur ? emailHtml(prenom || "", bilan, fiches) : "",
+    envoyer: !!(bilan && !erreur && !rapport.problemes.length), // envoi direct si le contrôle ne trouve rien
     rapport: erreur ? "ÉCHEC de la génération : " + erreur + ". Bilan à faire à la main."
       : (rapport.problemes.length ? "À VÉRIFIER : " + rapport.problemes.join(" ; ")
         : "Contrôle automatique : " + rapport.chiffres + " chiffres vérifiés, tous présents dans les fiches.")
