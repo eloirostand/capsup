@@ -164,6 +164,15 @@ export const handler = async (event) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { console.log("Bilan IA : email invalide"); return; }
   const profil = profilDepuis(data);
 
+  // Limite par adresse email : le script répond « deja » si un bilan a été envoyé récemment à cette adresse
+  // (il prévient alors l'élève). Toute autre réponse (ou erreur) laisse continuer.
+  try {
+    const v = await fetch(BILAN_SCRIPT_URL, { method: "POST", redirect: "follow",
+      body: JSON.stringify({ action: "verifier", token: BILAN_TOKEN, to: email, prenom }) });
+    const t = (await v.text()).trim();
+    if (t === "deja") { console.log("Bilan IA : limite par adresse atteinte"); return; }
+  } catch (e) { console.log("Bilan IA : vérification de limite impossible", String(e)); }
+
   let bilan = null, fiches = [], rapport = { chiffres: 0, problemes: [] }, erreur = null;
   try {
     const cat = await chargerCatalogue(URL || "https://capsup.org");
