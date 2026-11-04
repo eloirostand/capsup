@@ -80,8 +80,9 @@ async function claude(system, user, maxTokens) {
   const j = await r.json();
   const txt = (j.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   const m = txt.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error("réponse sans JSON");
-  return JSON.parse(m[0]);
+  const info = "(arrêt : " + j.stop_reason + ", " + txt.length + " caractères, début : " + JSON.stringify(txt.slice(0, 120)) + ")";
+  if (!m) throw new Error("réponse sans JSON " + info);
+  try { return JSON.parse(m[0]); } catch (e) { throw new Error("JSON illisible " + info); }
 }
 
 const SYS_SELECTION = `Tu présélectionnes des formations du catalogue CapSup pour un lycéen.
@@ -167,16 +168,16 @@ export const handler = async (event) => {
   try {
     const cat = await chargerCatalogue(URL || "https://capsup.org");
     const sel = await claude(SYS_SELECTION,
-      "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 800);
+      "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 3000);
     const ids = [...new Set((sel.ids || []).filter(i => cat.some(e => e.id === i)))].slice(0, 14);
-    if (ids.length < 3) throw new Error("présélection insuffisante (" + ids.length + ")");
+    if (ids.length < 3) throw new Error("étape 1 : présélection insuffisante (" + ids.length + ")");
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
     const entree = "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches);
-    bilan = await claude(SYS_BILAN, entree, 5000);
+    bilan = await claude(SYS_BILAN, entree, 16000);
     rapport = controler(bilan, fiches, profil);
     if (rapport.problemes.length) { // une seule nouvelle tentative, avec la liste des erreurs
       const b2 = await claude(SYS_BILAN, entree + "\n\nUne première version contenait des éléments absents des fiches : "
-        + rapport.problemes.join(" ; ") + ". Corrige-les en n'utilisant que les fiches.", 5000);
+        + rapport.problemes.join(" ; ") + ". Corrige-les en n'utilisant que les fiches.", 16000);
       const r2 = controler(b2, fiches, profil);
       if (r2.problemes.length <= rapport.problemes.length) { bilan = b2; rapport = r2; }
     }
