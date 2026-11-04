@@ -6,6 +6,7 @@
 // 5. Envoie le résultat au script Google Apps Script, qui crée un BROUILLON Gmail adressé à l'élève
 //    (rien n'est envoyé à l'élève sans relecture) et prévient CapSup.
 import { createHash } from "node:crypto";
+import { deflateRawSync } from "node:zlib";
 
 const MODELE = "claude-sonnet-5-5";
 const DEMO = ["assas-eco-gestion", "assas-double-licence-droit-eco", "janson-ecg", "dauphine-bachelor-intl",
@@ -127,29 +128,39 @@ function controler(bilan, fiches, profil) {
 
 // ---------- Email ----------
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function emailHtml(prenom, bilan, fiches) {
+// Lien vers la page du bilan sur le site : le contenu du bilan est compressé dans l'adresse (#bilan/…),
+// il n'est stocké nulle part ailleurs.
+function lienBilan(base, prenom, bilan) {
+  const b = { synthese: bilan.synthese, ordre_voeux: bilan.ordre_voeux, lacunes: bilan.lacunes, calendrier: bilan.calendrier,
+    voies: (bilan.voies || []).map(v => ({ id: v.id, rang: v.rang, ambition: v.ambition, pourquoi: v.pourquoi,
+      points_vigilance: v.points_vigilance, chiffres: v.chiffres })) };
+  const json = JSON.stringify({ v: 1, p: prenom, d: new Date().toISOString().slice(0, 10), b });
+  return base.replace(/\/$/, "") + "/#bilan/" + deflateRawSync(Buffer.from(json, "utf8"), { level: 9 }).toString("base64url");
+}
+
+function emailHtml(prenom, bilan, fiches, lien) {
   const parId = Object.fromEntries(fiches.map(f => [f.id, f]));
-  const c = "#2B55E8";
-  const voies = bilan.voies.filter(v => parId[v.id]).map(v => {
-    const f = parId[v.id];
-    return `<tr><td style="padding:14px 0;border-top:1px solid #e6dfd2">
-<div style="font-size:13px;color:#5b6476">${esc(v.rang)}. ${esc(v.ambition)}</div>
-<div style="font-size:16px;font-weight:bold"><a href="${esc(f.url_fiche)}" style="color:${c}">${esc(f.nom)}</a></div>
-<div style="font-size:13px;color:#5b6476">${esc(f.etablissement)} · ${esc(f.ville)}</div>
-<p style="margin:8px 0 4px">${esc(v.pourquoi)}</p>
-<p style="margin:4px 0"><b>Points de vigilance :</b> ${esc(v.points_vigilance)}</p>
-<p style="margin:4px 0;font-size:13px;color:#5b6476">${esc(v.chiffres)}</p></td></tr>`;
-  }).join("");
-  return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:640px">
-<p>Bonjour ${esc(prenom)},</p>
-<p>Voici ton bilan d'orientation CapSup, établi à partir de tes réponses et des fiches de notre catalogue.</p>
-<h2 style="font-size:18px;color:${c}">En résumé</h2><p>${esc(bilan.synthese)}</p>
-<h2 style="font-size:18px;color:${c}">Les voies que nous te proposons</h2><table style="width:100%;border-collapse:collapse">${voies}</table>
-<h2 style="font-size:18px;color:${c}">Ordre de tes vœux</h2><p>${esc(bilan.ordre_voeux)}</p>
-<h2 style="font-size:18px;color:${c}">Ce que nos données ne permettent pas de dire</h2><p>${esc(bilan.lacunes)}</p>
-<h2 style="font-size:18px;color:${c}">Calendrier</h2><p>${esc(bilan.calendrier)}</p>
-<p style="font-size:13px;color:#5b6476">La sélectivité indiquée correspond au nombre de places divisé par le nombre de candidats, pour l'année citée. Elle ne mesure pas tes chances personnelles. Les fiches complètes et leurs sources sont sur capsup.org.</p>
-<p>Pour toute question, réponds simplement à cet email.</p><p>L'équipe CapSup</p></div>`;
+  const voies = (bilan.voies || []).filter(v => parId[v.id]);
+  const n = k => voies.filter(v => String(v.ambition || "").toLowerCase().startsWith(k)).length;
+  const tuile = (val, lib, fond, coul) => `<td width="33%" style="padding:4px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${fond};border-radius:14px"><tr><td align="center" style="padding:14px 6px;font-family:Arial,sans-serif"><div style="font-size:26px;font-weight:bold;color:${coul};line-height:1.1">${val}</div><div style="font-size:12px;color:#5b6476;padding-top:2px">${lib}</div></td></tr></table></td>`;
+  const bouton = `<table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td style="background:#2B55E8;border-radius:12px"><a href="${esc(lien)}" style="display:inline-block;padding:15px 30px;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none">Lire mon bilan sur CapSup &rarr;</a></td></tr></table>`;
+  const contenu = ["Tes " + voies.length + " formations classées, avec pour chacune pourquoi elle te correspond", "Les chiffres clés de chaque formation, avec leur année et leur source", "L'ordre conseillé de tes vœux Parcoursup", "Le calendrier et les points de vigilance"]
+    .map(t => `<tr><td width="26" valign="top" style="padding:5px 0;font-family:Arial,sans-serif;font-size:16px;color:#2B55E8">&#10003;</td><td style="padding:5px 0;font-family:Arial,sans-serif;font-size:14px;color:#1e232a">${esc(t)}</td></tr>`).join("");
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f8f5ee">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f5ee"><tr><td align="center" style="padding:28px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
+<tr><td style="padding:0 4px 16px;font-family:Arial,sans-serif;font-size:22px;font-weight:bold;color:#2B55E8">CapSup<span style="color:#FFB020">.</span></td></tr>
+<tr><td style="background:#ffffff;border:1.5px solid #c9d4f6;border-radius:20px;padding:28px 24px">
+<div style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#2B55E8">Ton bilan d'orientation</div>
+<div style="font-family:Arial,sans-serif;font-size:26px;font-weight:bold;color:#1e232a;padding:6px 0 10px">${prenom ? esc(prenom) + ", ton" : "Ton"} bilan est prêt</div>
+<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#3d4452">Nous avons étudié tes réponses et sélectionné dans notre catalogue les formations qui correspondent le mieux à ton profil.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 8px"><tr>${tuile(n("amb"), "ambitieuses", "#efeafd", "#5b21b6")}${tuile(voies.length - n("amb") - n("s"), "cohérentes", "#e8eefc", "#1e40af")}${tuile(n("s"), "de sécurité", "#fff4dc", "#92400e")}</tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 22px">${contenu}</table>
+${bouton}
+<div style="font-family:Arial,sans-serif;font-size:12px;color:#717680;text-align:center;padding-top:14px">Ce lien est personnel : il contient ton bilan. Garde cet email pour le retrouver.</div>
+</td></tr>
+<tr><td style="padding:18px 8px;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:#717680;text-align:center">Une question ? Réponds simplement à cet email.<br>CapSup &middot; capsup.org</td></tr>
+</table></td></tr></table></body></html>`;
 }
 
 // ---------- Point d'entrée ----------
@@ -194,8 +205,8 @@ export const handler = async (event) => {
 
   const corps = {
     action: "brouillon", token: BILAN_TOKEN, id: String(id || ""), to: email, prenom,
-    sujet: "Ton bilan d'orientation CapSup",
-    html: bilan && !erreur ? emailHtml(prenom || "", bilan, fiches) : "",
+    sujet: (prenom ? prenom + ", ton" : "Ton") + " bilan d'orientation CapSup est prêt",
+    html: bilan && !erreur ? emailHtml(prenom || "", bilan, fiches, lienBilan(URL || "https://capsup.org", prenom || "", bilan)) : "",
     envoyer: !!(bilan && !erreur && !rapport.problemes.length), // envoi direct si le contrôle ne trouve rien
     rapport: erreur ? "ÉCHEC de la génération : " + erreur + ". Bilan à faire à la main."
       : (rapport.problemes.length ? "À VÉRIFIER : " + rapport.problemes.join(" ; ")
