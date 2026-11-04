@@ -8,7 +8,8 @@
 import { createHash } from "node:crypto";
 import { deflateRawSync } from "node:zlib";
 
-const MODELE = "claude-sonnet-5-5";
+const MODELE = "claude-sonnet-5-5";       // rédaction du bilan
+const MODELE_TRI = "claude-haiku-5-5";     // étape 1 (présélection), moins chère
 const DEMO = ["assas-eco-gestion", "assas-double-licence-droit-eco", "janson-ecg", "dauphine-bachelor-intl",
   "sorbonne-droit-europe", "but-info-cloud-paris", "montaigne-ecg"];
 
@@ -30,6 +31,8 @@ function ligneIndex(e) {
     e.selectivityRate != null ? e.selectivityRate + " %" : "?", e.feesDisplay || "?", e.durationLabel || ""].join(" | ");
 }
 
+// Textes longs coupés : réduit les jetons d'entrée de l'étape 2 (le contrôle utilise les mêmes fiches coupées).
+const court = (t, n = 700) => t == null ? t : (typeof t === "string" ? (t.length > n ? t.slice(0, n) + "…" : t) : court(JSON.stringify(t), n));
 function ficheCompacte(e) {
   const L = e.legacy || {};
   const F = L.fiabilite || {};
@@ -38,15 +41,15 @@ function ficheCompacte(e) {
     type: e.categoryLabel, domaine: e.domain, duree: e.durationLabel,
     places: e.capacity, candidats: e.applicantsCount,
     selectivite_pct: e.selectivityRate, selectivite_libelle: e.selectivityLabel,
-    selectivite_detail: L.taux_acces, selectivite_source: F.taux_acces,
-    frais: e.feesDisplay, frais_detail: L.frais_scolarite, frais_source: F.frais_scolarite, cout_total: L.cout_total_estime,
-    parcoursup: L.parcoursup, selection: L.selection,
-    procedure: L.procedure_admission, conditions: L.conditions_admission,
-    specialites_recommandees: e.recommendedSpecialties, profil_attendu: e.profileRequirements,
-    alternance: L.alternance, international: L.international,
-    et_apres: { poursuite: L.poursuite_etudes, masters: L.masters, admissions_paralleles: L.admissions_paralleles,
-      insertion: L.insertion, salaire: L.salaire, trajectoires: e.trajectories },
-    debouches: L.debouches,
+    selectivite_detail: court(L.taux_acces), selectivite_source: F.taux_acces,
+    frais: e.feesDisplay, frais_detail: court(L.frais_scolarite), frais_source: F.frais_scolarite, cout_total: court(L.cout_total_estime),
+    parcoursup: L.parcoursup, selection: court(L.selection),
+    procedure: court(L.procedure_admission), conditions: court(L.conditions_admission),
+    specialites_recommandees: e.recommendedSpecialties, profil_attendu: court(e.profileRequirements),
+    alternance: court(L.alternance), international: court(L.international),
+    et_apres: { poursuite: court(L.poursuite_etudes), masters: court(L.masters), admissions_paralleles: court(L.admissions_paralleles),
+      insertion: court(L.insertion), salaire: court(L.salaire), trajectoires: e.trajectories },
+    debouches: court(L.debouches),
     url_fiche: "https://capsup.org/formations/" + (e.slug || e.id) + "/",
   };
 }
@@ -71,14 +74,15 @@ function profilDepuis(data) {
 }
 
 // ---------- API Claude ----------
-async function claude(system, user, maxTokens) {
+async function claude(system, user, maxTokens, modele = MODELE) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODELE, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ model: modele, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
   });
   if (!r.ok) throw new Error("API " + r.status + " " + (await r.text()).slice(0, 300));
   const j = await r.json();
+  if (j.usage) console.log("Bilan IA : jetons", modele, "entrée", j.usage.input_tokens, "sortie", j.usage.output_tokens);
   const txt = (j.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   const m = txt.match(/\{[\s\S]*\}/);
   const info = "(arrêt : " + j.stop_reason + ", " + txt.length + " caractères, début : " + JSON.stringify(txt.slice(0, 120)) + ")";
@@ -88,7 +92,7 @@ async function claude(system, user, maxTokens) {
 
 const SYS_SELECTION = `Tu présélectionnes des formations du catalogue CapSup pour un lycéen.
 Tu reçois son PROFIL et l'INDEX du catalogue (une ligne par formation : id | nom | établissement | ville | région | type | domaine | sélectivité = places ÷ candidats | frais | durée).
-Choisis 8 à 14 formations pertinentes : domaine et objectifs de l'élève, contraintes de budget et de mobilité, et un mélange de vœux ambitieux et plus accessibles quand le catalogue le permet. Inclus les établissements que l'élève vise s'ils sont dans l'index. Au plus 3 CPGE ECG, de lycées différents. Évite de choisir plusieurs formations quasi identiques.
+Choisis 8 à 10 formations pertinentes : domaine et objectifs de l'élève, contraintes de budget et de mobilité, et un mélange de vœux ambitieux et plus accessibles quand le catalogue le permet. Inclus les établissements que l'élève vise s'ils sont dans l'index. Au plus 3 CPGE ECG, de lycées différents. Évite de choisir plusieurs formations quasi identiques.
 Réponds uniquement en JSON : {"ids": ["id1", "id2", …]}`;
 
 const SYS_BILAN = `Tu rédiges le bilan d'orientation d'un lycéen pour CapSup. Tu reçois PROFIL (ses réponses au formulaire) et FICHES (formations présélectionnées du catalogue CapSup, en JSON).
@@ -188,8 +192,8 @@ export const handler = async (event) => {
   try {
     const cat = await chargerCatalogue(URL || "https://capsup.org");
     const sel = await claude(SYS_SELECTION,
-      "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 3000);
-    const ids = [...new Set((sel.ids || []).filter(i => cat.some(e => e.id === i)))].slice(0, 14);
+      "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 1000, MODELE_TRI);
+    const ids = [...new Set((sel.ids || []).filter(i => cat.some(e => e.id === i)))].slice(0, 10);
     if (ids.length < 3) throw new Error("étape 1 : présélection insuffisante (" + ids.length + ")");
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
     const entree = "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches);
