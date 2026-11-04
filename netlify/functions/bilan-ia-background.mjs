@@ -28,7 +28,8 @@ async function chargerCatalogue(base) {
 
 function ligneIndex(e) {
   return [e.id, e.name, e.university, e.city, e.region, e.categoryLabel, e.domain,
-    e.selectivityRate != null ? e.selectivityRate + " %" : "?", e.feesDisplay || "?", e.durationLabel || ""].join(" | ");
+    e.selectivityRate != null ? e.selectivityRate + " %" : "?", e.feesDisplay || "?", e.durationLabel || "",
+    e.bacTechnoPct != null ? "bac techno admis " + e.bacTechnoPct + " %" : "bac techno admis ?"].join(" | ");
 }
 
 const court = t => t; // pas de coupe : textes complets (décision d'Eloi, 04/11)
@@ -45,6 +46,7 @@ function ficheCompacte(e) {
     parcoursup: L.parcoursup, selection: court(L.selection),
     procedure: court(L.procedure_admission), conditions: court(L.conditions_admission),
     specialites_recommandees: e.recommendedSpecialties, profil_attendu: court(e.profileRequirements),
+    part_bacheliers_technologiques_admis_pct: e.bacTechnoPct, part_bacheliers_generaux_admis_pct: e.bacGeneralPct,
     alternance: court(L.alternance), international: court(L.international),
     et_apres: { poursuite: court(L.poursuite_etudes), masters: court(L.masters), admissions_paralleles: court(L.admissions_paralleles),
       insertion: court(L.insertion), salaire: court(L.salaire), trajectoires: e.trajectories },
@@ -61,7 +63,16 @@ const LIBELLES = {
   international: { oui: "important", non: "peu important" },
   alternance: { oui: "indispensable", bonus: "un plus", non: "pas nécessaire" },
   selectivite: { haute: "prêt(e) à viser très sélectif", moyenne: "sélectivité modérée", faible: "peu sélectif" },
+  type_lycee: { general: "voie générale", techno: "voie technologique", pro: "voie professionnelle" },
 };
+
+// Repères sourcés sur la voie technologique, utilisables dans le bilan (et acceptés par le contrôle des chiffres).
+const REPERES_TECHNO = `REPÈRES VOIE TECHNOLOGIQUE (sources officielles, à citer telles quelles) :
+- Séries du bac technologique : STMG, STI2D, STL, ST2S, STD2A, STHR, S2TMD, STAV (Onisep, « La voie technologique en première et terminale »).
+- BUT : pour chaque spécialité de BUT de chaque IUT, le recteur fixe chaque année un taux minimal de places réservées aux bacheliers technologiques (code de l'éducation, article L612-3, VII). Exemple : arrêté du recteur de la région académique Normandie du 13 avril 2026 (Parcoursup 2026) : 50 % en GEA et en Techniques de commercialisation.
+- Prépa ECT : son option technologique est réservée aux bacheliers STMG ; elle prépare aux concours des écoles de commerce (Onisep, « Que faire après le bac STMG ? »).
+- Prépas scientifiques pour bacheliers technologiques (Onisep, « Les prépas scientifiques ») : TSI, destinée aux bacheliers STI2D et STL ; TPC, pour les bacheliers STL ; TB, pour les bacheliers STL et STAV.
+Ces repères ne désignent aucune formation précise du catalogue : ne les présente pas comme des fiches CapSup.`;
 function profilDepuis(data) {
   const exclus = ["nom", "email", "telephone", "bot-field", "form-name", "pistes_affichees"];
   const p = {};
@@ -91,6 +102,8 @@ async function claude(system, user, maxTokens, modele = MODELE) {
 
 const SYS_SELECTION = `Tu présélectionnes des formations du catalogue CapSup pour un lycéen.
 Tu reçois son PROFIL et l'INDEX du catalogue (une ligne par formation : id | nom | établissement | ville | région | type | domaine | sélectivité = places ÷ candidats | frais | durée).
+Le champ « bac techno admis » indique la part de bacheliers technologiques parmi les admis quand la fiche la renseigne.
+Si l'élève est en voie technologique (type_lycee / serie_bac) : privilégie les formations qui admettent des bacheliers technologiques (BUT, BTS, part « bac techno admis » supérieure à 0 %) et en lien avec sa série ; n'inclus une formation à 0 % de bacheliers technologiques admis (CPGE ECG, B/L, scientifiques, CPES… réservées au bac général d'après leurs fiches) que si l'élève la vise explicitement.
 Choisis 8 à 10 formations pertinentes : domaine et objectifs de l'élève, contraintes de budget et de mobilité, et un mélange de vœux ambitieux et plus accessibles quand le catalogue le permet. Inclus les établissements que l'élève vise s'ils sont dans l'index. Au plus 3 CPGE ECG, de lycées différents. Évite de choisir plusieurs formations quasi identiques.
 Réponds uniquement en JSON : {"ids": ["id1", "id2", …]}`;
 
@@ -103,6 +116,8 @@ Règles absolues :
 - La sélectivité est « places ÷ candidats ». N'emploie jamais « taux d'accès » et ne parle pas de propositions comme d'un taux d'accès.
 - Donnée absente : « Donnée non disponible ». Si le catalogue ne contient pas de formation adaptée à un besoin de l'élève, dis-le explicitement dans "lacunes" au lieu de forcer un substitut.
 - Ne favorise aucune voie par principe. Tutoie l'élève, parle au nom de CapSup (« nous », jamais « je »). Une CPGE ECG est en « lycée public ou privé sous contrat ».
+- Voie technologique : si PROFIL indique la voie technologique (type_lycee, serie_bac, spécialités de sa série), vérifie pour chaque formation dans la fiche (conditions, profil attendu, spécialités recommandées, part de bacheliers technologiques admis) qu'elle est accessible à sa série ; si une fiche réserve la formation au bac général, ne la recommande pas, ou seulement si l'élève la vise explicitement, en le signalant dans "points_vigilance". Tu peux t'appuyer sur REPÈRES (voie technologique) pour les généralités (taux minimal de bacheliers technologiques en BUT, prépas ECT, TSI, TPC, TB) en citant leur source ; si une voie pensée pour sa série manque au catalogue, dis-le dans "lacunes".
+- N'applique pas aux bacheliers technologiques les attentes de spécialités de la voie générale (ex. « spécialité maths ») : compare plutôt avec ses spécialités de série et ses notes.
 - Phrases courtes et concrètes, sans flatterie.
 Réponds uniquement en JSON :
 {"synthese": "3-4 phrases", "voies": [{"id": "…", "rang": 1, "ambition": "Ambitieux|Cohérent|Sécurité", "pourquoi": "2-3 phrases liées au profil", "points_vigilance": "…", "chiffres": "chiffres de la fiche avec année et source"}], "ordre_voeux": "…", "lacunes": "…", "calendrier": "uniquement des dates présentes dans les fiches, sinon renvoyer au calendrier officiel Parcoursup"}
@@ -113,7 +128,7 @@ const norm = s => String(s).replace(/[  \s]/g, "").replace(/,/g, ".");
 const nombres = t => (String(t || "").match(/\d[\d\s  ]*(?:[.,]\d+)?/g) || []).map(x => norm(x).replace(/\.$/, "")).filter(Boolean);
 function controler(bilan, fiches, profil) {
   const parId = Object.fromEntries(fiches.map(f => [f.id, f]));
-  const prof = norm(JSON.stringify(profil)), tout = norm(JSON.stringify(fiches));
+  const prof = norm(JSON.stringify(profil) + REPERES_TECHNO), tout = norm(JSON.stringify(fiches));
   const pb = []; let n = 0;
   if (!Array.isArray(bilan.voies) || bilan.voies.length < 3) pb.push("moins de 3 voies");
   for (const v of bilan.voies || []) {
@@ -195,7 +210,8 @@ export const handler = async (event) => {
     const ids = [...new Set((sel.ids || []).filter(i => cat.some(e => e.id === i)))].slice(0, 10);
     if (ids.length < 3) throw new Error("étape 1 : présélection insuffisante (" + ids.length + ")");
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
-    const entree = "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches);
+    const entree = "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches)
+      + "\n\n" + REPERES_TECHNO;
     bilan = await claude(SYS_BILAN, entree, 16000);
     rapport = controler(bilan, fiches, profil);
     if (rapport.problemes.length) { // une seule nouvelle tentative, avec la liste des erreurs
