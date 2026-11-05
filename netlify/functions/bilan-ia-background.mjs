@@ -53,7 +53,7 @@ function lireCalendrier(src) {
 // ---------- Contexte calculé (session visée, priorités) ----------
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 const dateFr = d => { const [a, m, j] = String(d).split("-").map(Number); return (j === 1 ? "1er" : j) + " " + MOIS[m - 1] + " " + a; };
-function contexteDepuis(data, calendrier, maintenant = new Date()) {
+function contexteDepuis(data, calendrier, maintenant = new Date(), cat = []) {
   const paris = new Date(maintenant.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
   const finAnnee = paris.getMonth() >= 8 ? paris.getFullYear() + 1 : paris.getFullYear(); // année scolaire en cours : sept. → août
   const classe = String(data.classe || "");
@@ -72,6 +72,11 @@ function contexteDepuis(data, calendrier, maintenant = new Date()) {
     + officiel.etapes.map(s => dateFr(s.d) + (s.e ? " au " + dateFr(s.e) : "") + " : " + s.t).join(" ; ") + ".");
   else lignes.push("Calendrier officiel de cette session : pas encore publié. N'indique que des mois habituels (sans jour ni année), à revérifier.");
   lignes.push("Élève scolarisé en France : " + (enFrance ? "oui" : "non précisé") + ".");
+  if (enFrance) {
+    const n = cat.filter(e => e.region === data.localisation).length;
+    lignes.push("RÉGION DE L'ÉLÈVE : " + data.localisation + (n ? " (" + n + " formations du catalogue dans cette région)."
+      : " : aucune formation du catalogue dans cette région. Cherche sur le web (sources officielles) les formations de son académie qui correspondent à ses domaines (en particulier les licences, où il serait prioritaire) et nomme-les dans « lacunes » comme pistes hors catalogue, avec leur source."));
+  }
   const prepa = prive && voie === "generale" && !moyenneFaible;
   if (prepa) lignes.push("PRÉPA PRIORITAIRE : oui (lycée privé, voie générale, moyenne d'au moins 12).");
   return { session, officiel, voie, enFrance, prepa, texte: lignes.join("\n") };
@@ -81,14 +86,26 @@ function contexteDepuis(data, calendrier, maintenant = new Date()) {
 const domainesEleve = data => String(data.domaines || "").split(/[,;]\s*/).map(s => s.trim()).filter(Boolean);
 const regionEleve = (data, cat) => cat.some(e => e.region === data.localisation) ? data.localisation : null;
 const compatible = (e, ctx) => ctx.voie !== "techno" || e.bacTechnoPct !== 0;
+const ETRANGER = ["Espagne", "Canada", "Royaume-Uni", "Pays-Bas", "Italie"];
+const PLAFOND = { public: 500, moderate: 4000 };
+function respecteContraintes(e, data) {
+  const plafond = PLAFOND[data.budget];
+  if (plafond && !(e.annualFees != null && e.annualFees <= plafond)) return false;
+  if (data.mobilite === "idf" && e.region !== "Île-de-France") return false;
+  if (data.mobilite === "france" && ETRANGER.includes(e.region)) return false;
+  return true;
+}
 // Au moins 2 formations nettement moins sélectives des domaines et de la région de l'élève.
 // « Moins sélective » = licence marquée non sélective (capacité limitée) ou sélectivité (places ÷ candidats) ≥ 5 %.
 // Les CPGE sont traitées à part (toutes autour de 1 à 3 % : la sélectivité ne les distingue pas).
 const nonSelective = e => /non s[ée]lective/i.test(String(e.selectivityLabel || ""));
 function securites(cat, data, ctx, deja) {
   const reg = regionEleve(data, cat), doms = domainesEleve(data);
-  const pools = doms.map(d => cat.filter(e => e.domain === d && e.category !== "cpge" && (!reg || e.region === reg) && compatible(e, ctx)
-      && (nonSelective(e) || (e.selectivityRate != null && e.selectivityRate >= 5)))
+  // Une licence non sélective n'est une sécurité que dans la région de l'élève (priorité aux résidents du secteur,
+  // quota de non-résidents ailleurs).
+  const pools = doms.map(d => cat.filter(e => e.domain === d && e.category !== "cpge" && (!reg || e.region === reg)
+      && compatible(e, ctx) && respecteContraintes(e, data)
+      && (nonSelective(e) ? !!(reg && e.region === reg) : (e.selectivityRate != null && e.selectivityRate >= 5)))
     .sort((a, b) => (nonSelective(b) - nonSelective(a)) || ((b.selectivityRate || 0) - (a.selectivityRate || 0))).slice(0, 3));
   const tous = new Set(pools.flat().map(e => e.id));
   const ajout = [];
@@ -234,10 +251,11 @@ const SYS_BILAN = `Tu rédiges le bilan d'orientation d'un lycéen pour CapSup. 
 Règles absolues :
 - Tu ne recommandes QUE des formations présentes dans FICHES, identifiées par leur id exact.
 - Chiffres (places, candidats, sélectivité, frais, pourcentages, dates, années) : uniquement ceux de la fiche concernée, de PROFIL, de CONTEXTE, ou d'une page trouvée par ta recherche web et citée. Pas de chiffre calculé par toi (pas de somme, pas d'arrondi). Chaque chiffre est accompagné de son année et de sa source.
-- Recherche web : tu peux et tu es encouragé à chercher des informations utiles absentes des fiches ou plus récentes (procédures, attendus, dates de la session visée, niveau des admis, débouchés, formations proches). Priorité aux sources officielles (parcoursup.gouv.fr, onisep.fr, sites des établissements, service-public.fr, enseignementsup-recherche.gouv.fr) ; une source secondaire (presse, classements) est signalée comme telle. Toute information hors fiche indique dans le texte sa source (nom du site) et son année, et chaque page utilisée figure dans "sources_web". Si une page contredit une fiche, signale la contradiction et indique ce que tu retiens. N'écris jamais dans une requête de recherche le prénom, l'email, le lycée ou d'autres informations personnelles de l'élève.
+- Recherche web : tu peux et tu es encouragé à chercher des informations utiles absentes des fiches ou plus récentes (procédures, attendus, dates de la session visée, niveau des admis, débouchés, formations proches). Priorité aux sources officielles (parcoursup.gouv.fr, onisep.fr, sites des établissements, service-public.fr, enseignementsup-recherche.gouv.fr) ; une source secondaire (presse, classements) est signalée comme telle. Toute information hors fiche indique dans le texte sa source (nom du site) et son année, et chaque page utilisée figure dans "sources_web". Si une page contredit une fiche, signale la contradiction et indique ce que tu retiens. N'écris jamais dans une requête de recherche le prénom, l'email, le nom du lycée ou d'autres informations personnelles de l'élève (sa région ou son académie sont permises).
 - Sans fiche ni source web citée, n'affirme aucun fait (lieu, école, procédure, débouché), même s'il te semble vrai. Si une fiche marque un chiffre « à confirmer », garde cette mention.
 - Tu ne donnes jamais de probabilité d'admission chiffrée. Le niveau d'ambition est qualitatif : "Ambitieux", "Cohérent" ou "Sécurité", justifié par la fiche. Si la fiche ne donne pas le niveau des admis, dis-le.
-- Sécurité : classe en « Sécurité » au moins une formation quand FICHES en contient une adaptée (moins sélective, dans ses domaines, accessible avec son profil). Une prépa, une licence, une double licence ou un BUT qui mène à son objectif (par exemple une école d'ingénieurs par concours ou admission parallèle) compte comme voie vers cet objectif, même sans Bac+5 direct. Ne classe pas en « Sécurité » une formation à l'étranger ni une formation dont l'élève ne remplit pas une condition (langue, spécialité). Ne déclare dans "lacunes" l'absence d'option de sécurité qu'après avoir examiné toutes les FICHES.
+- Sécurité : classe en « Sécurité » au moins une formation quand FICHES en contient une adaptée (moins sélective, dans ses domaines, accessible avec son profil). Une prépa, une licence, une double licence ou un BUT qui mène à son objectif (par exemple une école d'ingénieurs par concours ou admission parallèle) compte comme voie vers cet objectif, même sans Bac+5 direct. Ne classe pas en « Sécurité » une formation à l'étranger ni une formation dont l'élève ne remplit pas une condition (langue, spécialité).
+- Licences non sélectives (« non sélective · capacité limitée ») : les candidats qui résident dans le secteur de la formation (son académie ; l'Île-de-France pour les universités franciliennes) sont prioritaires, et le recteur plafonne la part de candidats non résidents. Si la formation n'est pas dans la RÉGION DE L'ÉLÈVE, signale ce plafond dans "points_vigilance" (chiffre de la fiche, ou d'une source web citée, sinon dis qu'il existe sans chiffre) et ne la classe jamais en « Sécurité ». Ne déclare dans "lacunes" l'absence d'option de sécurité qu'après avoir examiné toutes les FICHES.
 - PRÉPA PRIORITAIRE : si CONTEXTE l'indique, place au moins 2 CPGE de FICHES correspondant à ses domaines aux premiers rangs (rangs 1 à 3).
 - Session : les dates de candidature concernent uniquement la SESSION VISÉE de CONTEXTE. N'écris aucune date d'une session passée ou d'une autre session, même si elle figure dans une fiche ou sur une page web : une fiche datée d'une autre session ne sert pas pour le calendrier. S'il existe un CALENDRIER OFFICIEL dans CONTEXTE, utilise-le (avec sa source). Sinon, indique seulement les mois habituels (par exemple « vœux de mi-janvier à mi-mars », « réponses à partir de début juin »), sans jour ni année, en précisant qu'ils sont à revérifier quand le calendrier officiel de sa session sera publié. Pour les candidatures hors Parcoursup, même règle. Si l'élève est en Première, dis-le dans la synthèse (il candidatera l'année suivante).
 - Langues : si l'élève est scolarisé en France, ne mentionne pas les conditions de langue destinées aux candidats étrangers ou non francophones (niveau de français, DELF/DALF, TCF…).
@@ -362,7 +380,7 @@ export const handler = async (event) => {
   web.cites = []; web.urls = new Set();
   try {
     const { cat, calendrier } = await chargerCatalogue(URL || "https://capsup.org");
-    ctx = contexteDepuis(data || {}, calendrier);
+    ctx = contexteDepuis(data || {}, calendrier, new Date(), cat);
     const reg = regionEleve(data || {}, cat);
     const sel = await claude(SYS_SELECTION,
       "CONTEXTE :\n" + ctx.texte + "\n\nPROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 16000, MODELE_TRI, "étape 1 (présélection) : ");
