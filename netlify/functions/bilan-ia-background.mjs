@@ -144,6 +144,7 @@ function ficheCompacte(e) {
     selectivite_detail: court(L.taux_acces), selectivite_source: F.taux_acces,
     frais: e.feesDisplay, frais_detail: court(L.frais_scolarite), frais_source: F.frais_scolarite, cout_total: court(L.cout_total_estime),
     parcoursup: L.parcoursup, selection: court(L.selection),
+    voeu_parcoursup: { type: L.voeu_type, voeu: L.voeu_groupe, sous_voeu: L.voeu_sous_voeu, decompte_sous_voeux: L.voeu_decompte, explication: L.voeu_parcoursup },
     procedure: court(L.procedure_admission), conditions: court(L.conditions_admission),
     specialites_recommandees: e.recommendedSpecialties, profil_attendu: court(e.profileRequirements),
     part_bacheliers_technologiques_admis_pct: e.bacTechnoPct, part_bacheliers_generaux_admis_pct: e.bacGeneralPct,
