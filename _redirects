@@ -1,2 +1,4 @@
+# Ancien domaine Netlify -> domaine principal (SEO : une seule adresse indexée)
+https://capsup.netlify.app/*  https://capsup.org/:splat  301!
 /netlify/*  /index.html  404!
 /*    /index.html   200
