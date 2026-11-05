@@ -74,7 +74,7 @@ const REPERES_TECHNO = `REPÈRES VOIE TECHNOLOGIQUE (sources officielles, à cit
 - Prépas scientifiques pour bacheliers technologiques (Onisep, « Les prépas scientifiques ») : TSI, destinée aux bacheliers STI2D et STL ; TPC, pour les bacheliers STL ; TB, pour les bacheliers STL et STAV.
 Ces repères ne désignent aucune formation précise du catalogue : ne les présente pas comme des fiches CapSup.`;
 function profilDepuis(data) {
-  const exclus = ["nom", "email", "telephone", "bot-field", "form-name", "pistes_affichees"];
+  const exclus = ["nom", "email", "telephone", "bot-field", "form-name", "pistes_affichees", "ip", "user_agent", "referrer"];
   const p = {};
   for (const [k, v] of Object.entries(data || {})) {
     if (exclus.includes(k) || v == null || String(v).trim() === "") continue;
