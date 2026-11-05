@@ -84,7 +84,18 @@ function profilDepuis(data) {
 }
 
 // ---------- API Claude ----------
-async function claude(system, user, maxTokens, modele = MODELE) {
+// Les modèles 5.5 « réfléchissent » avant de répondre (réflexion adaptative active par défaut) ;
+// cette réflexion consomme le plafond max_tokens. Plafonds larges + une nouvelle tentative si la réponse est vide.
+async function claude(system, user, maxTokens, modele = MODELE, etape = "") {
+  try { return await appelClaude(system, user, maxTokens, modele); }
+  catch (e) {
+    if (!/sans JSON|illisible/.test(String(e.message))) throw new Error(etape + String(e.message));
+    console.log("Bilan IA : " + etape + "nouvelle tentative après", e.message);
+    try { return await appelClaude(system, user, Math.min(maxTokens * 2, 120000), modele); }
+    catch (e2) { throw new Error(etape + String(e2.message)); }
+  }
+}
+async function appelClaude(system, user, maxTokens, modele) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -206,19 +217,21 @@ export const handler = async (event) => {
   try {
     const cat = await chargerCatalogue(URL || "https://capsup.org");
     const sel = await claude(SYS_SELECTION,
-      "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 1000, MODELE_TRI);
+      "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 16000, MODELE_TRI, "étape 1 (présélection) : ");
     const ids = [...new Set((sel.ids || []).filter(i => cat.some(e => e.id === i)))].slice(0, 10);
     if (ids.length < 3) throw new Error("étape 1 : présélection insuffisante (" + ids.length + ")");
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
     const entree = "PROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches)
       + "\n\n" + REPERES_TECHNO;
-    bilan = await claude(SYS_BILAN, entree, 16000);
+    bilan = await claude(SYS_BILAN, entree, 64000, MODELE, "étape 2 (rédaction) : ");
     rapport = controler(bilan, fiches, profil);
     if (rapport.problemes.length) { // une seule nouvelle tentative, avec la liste des erreurs
-      const b2 = await claude(SYS_BILAN, entree + "\n\nUne première version contenait des éléments absents des fiches : "
-        + rapport.problemes.join(" ; ") + ". Corrige-les en n'utilisant que les fiches.", 16000);
-      const r2 = controler(b2, fiches, profil);
-      if (r2.problemes.length <= rapport.problemes.length) { bilan = b2; rapport = r2; }
+      let b2 = null;
+      try { b2 = await claude(SYS_BILAN, entree + "\n\nUne première version contenait des éléments absents des fiches : "
+        + rapport.problemes.join(" ; ") + ". Corrige-les en n'utilisant que les fiches.", 64000, MODELE, "étape 2 bis (correction) : "); }
+      catch (e) { console.log("Bilan IA : correction impossible, première version conservée", String(e.message || e)); }
+      if (b2) { const r2 = controler(b2, fiches, profil);
+        if (r2.problemes.length <= rapport.problemes.length) { bilan = b2; rapport = r2; } }
     }
   } catch (e) { erreur = String(e && e.message || e); console.log("Bilan IA : erreur", erreur); }
 
