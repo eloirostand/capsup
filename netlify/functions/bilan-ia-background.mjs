@@ -75,7 +75,7 @@ function contexteDepuis(data, calendrier, maintenant = new Date(), cat = []) {
   if (enFrance) {
     const n = cat.filter(e => e.region === data.localisation).length;
     lignes.push("RÉGION DE L'ÉLÈVE : " + data.localisation + (n ? " (" + n + " formations du catalogue dans cette région)."
-      : " : aucune formation du catalogue dans cette région. Cherche sur le web (sources officielles) les formations de son académie qui correspondent à ses domaines (en particulier les licences, où il serait prioritaire) et nomme-les dans « lacunes » comme pistes hors catalogue, avec leur source."));
+      : " : aucune formation du catalogue dans cette région. Cherche sur le web (sources officielles) les formations de son académie qui correspondent à ses domaines (en particulier les licences, où il serait prioritaire) et présente-les dans « autres_pistes » comme pistes hors catalogue, avec leur source (signale aussi ce manque dans « lacunes »)."));
   }
   const prepa = prive && voie === "generale" && !moyenneFaible;
   if (prepa) lignes.push("PRÉPA PRIORITAIRE : oui (lycée privé, voie générale, moyenne d'au moins 12).");
@@ -246,7 +246,8 @@ Si l'élève est en voie technologique (type_lycee / serie_bac) : privilégie le
 Choisis 8 à 10 formations pertinentes : domaine et objectifs de l'élève, contraintes de budget et de mobilité, et un mélange de vœux ambitieux et plus accessibles quand le catalogue le permet. Inclus les établissements que l'élève vise s'ils sont dans l'index. Au plus 3 CPGE ECG, de lycées différents. Évite de choisir plusieurs formations quasi identiques.
 Inclus au moins 2 formations nettement moins sélectives (sélectivité plus élevée) dans les domaines et la région de l'élève : une prépa, une licence, une double licence ou un BUT qui mène vers son objectif compte, même si ce n'est pas un diplôme à Bac+5 direct.
 Si CONTEXTE indique « PRÉPA PRIORITAIRE : oui », inclus au moins 2 CPGE correspondant à ses domaines (scientifiques pour l'ingénierie ou l'informatique, ECG pour le commerce, B/L ou D2 pour l'économie), de préférence dans sa région et de sélectivités différentes.
-Réponds uniquement en JSON : {"ids": ["id1", "id2", …]}`;
+Ajoute dans "pistes" 4 à 8 AUTRES formations de l'index, différentes de "ids", moins prioritaires mais intéressantes pour cet élève (autre domaine qu'il a coché, autre ville, voie différente vers son objectif, option plus accessible).
+Réponds uniquement en JSON : {"ids": ["id1", "id2", …], "pistes": ["id", …]}`;
 
 const SYS_BILAN = `Tu rédiges le bilan d'orientation d'un lycéen pour CapSup. Tu reçois CONTEXTE (date, session Parcoursup visée, calendrier, priorités calculées), PROFIL (ses réponses au formulaire) et FICHES (formations présélectionnées du catalogue CapSup, en JSON).
 Règles absolues :
@@ -268,8 +269,9 @@ Règles absolues :
 - N'applique pas aux bacheliers technologiques les attentes de spécialités de la voie générale (ex. « spécialité maths ») : compare plutôt avec ses spécialités de série et ses notes.
 - Phrases courtes et concrètes, sans flatterie.
 Réponds uniquement en JSON :
-{"synthese": "3-4 phrases", "voies": [{"id": "…", "rang": 1, "ambition": "Ambitieux|Cohérent|Sécurité", "pourquoi": "2-3 phrases liées au profil", "points_vigilance": "…", "chiffres": "chiffres avec année et source"}], "ordre_voeux": "équilibre de la liste (vœux non classés)", "lacunes": "…", "calendrier": "dates de la session visée uniquement (voir règle Session)", "sources_web": [{"titre": "…", "url": "https://…"}]}
+{"synthese": "3-4 phrases", "voies": [{"id": "…", "rang": 1, "ambition": "Ambitieux|Cohérent|Sécurité", "pourquoi": "2-3 phrases liées au profil", "points_vigilance": "…", "chiffres": "chiffres avec année et source"}], "ordre_voeux": "équilibre de la liste (vœux non classés)", "lacunes": "…", "calendrier": "dates de la session visée uniquement (voir règle Session)", "sources_web": [{"titre": "…", "url": "https://…"}], "autres_pistes": [{"id": "…", "raison": "…"}, {"nom": "…", "etablissement": "…", "url": "https://…", "raison": "…"}]}
 "sources_web" : uniquement des pages réellement consultées par ta recherche ; liste vide si aucune.
+"autres_pistes" : 3 à 8 pistes intéressantes mais non détaillées, différentes des voies classées, chacune en une phrase liée au profil ("raison"). Formation du catalogue : {"id": "…", "raison": "…"}, avec un id de AUTRES FORMATIONS DU CATALOGUE ou de FICHES. Formation hors catalogue (trouvée par ta recherche web, par exemple une formation de son académie) : {"nom": "…", "etablissement": "…", "url": "page consultée", "raison": "…"} ; jamais de formation hors catalogue sans page consultée. Pas de chiffre dans "raison" sauf s'il figure dans la ligne d'index, la fiche ou une page citée.
 Entre 5 et 8 voies, classées. Ta réponse finale est uniquement ce JSON.`;
 
 // ---------- Contrôle ----------
@@ -295,9 +297,9 @@ function controleDates(bilan, ctx, pb) {
   if (/(place|mets|classe|range|positionne)[^.]{0,40}(d['’]abord|en premier|en tête)/i.test(String(bilan.ordre_voeux || "")))
     pb.push("ordre_voeux : suggère un classement des vœux (les vœux Parcoursup ne sont pas classés)");
 }
-function controler(bilan, fiches, profil, ctx) {
+function controler(bilan, fiches, profil, ctx, pistes = { ids: [], index: "" }) {
   const parId = Object.fromEntries(fiches.map(f => [f.id, f]));
-  const prof = norm(JSON.stringify(profil) + REPERES_TECHNO + ctx.texte + web.cites.join(" ")), tout = norm(JSON.stringify(fiches));
+  const prof = norm(JSON.stringify(profil) + REPERES_TECHNO + ctx.texte + web.cites.join(" ")), tout = norm(JSON.stringify(fiches) + pistes.index);
   const pb = []; let n = 0;
   controleDates(bilan, ctx, pb);
   const sw = Array.isArray(bilan.sources_web) ? bilan.sources_web : [];
@@ -310,6 +312,14 @@ function controler(bilan, fiches, profil, ctx) {
     for (const x of nombres([v.pourquoi, v.points_vigilance, v.chiffres].join(" "))) {
       n++; if (!src.includes(x) && !prof.includes(x)) pb.push(`${v.id} : « ${x} » absent de la fiche`);
     }
+  }
+  const voiesIds = new Set((bilan.voies || []).map(v => v.id));
+  const permis = new Set([...pistes.ids, ...fiches.map(f => f.id)]);
+  for (const a of Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []) {
+    if (!a || !String(a.raison || "").trim()) { pb.push("autre piste sans raison"); continue; }
+    if (a.id) { if (!permis.has(a.id)) pb.push(`autre piste « ${a.id} » absente du catalogue fourni`); else if (voiesIds.has(a.id)) pb.push(`autre piste « ${a.id} » déjà classée`); }
+    else if (!a.nom || !/^https?:\/\//.test(String(a.url || "")) || !web.urls.has(a.url)) pb.push(`autre piste hors catalogue sans page consultée : ${a.nom || "?"}`);
+    for (const x of nombres(a.raison)) { n++; if (!tout.includes(x) && !prof.includes(x)) pb.push(`autre piste : « ${x} » absent des sources`); }
   }
   for (const k of ["synthese", "ordre_voeux", "lacunes", "calendrier"])
     for (const x of nombres(bilan[k])) { n++; if (!tout.includes(x) && !prof.includes(x)) pb.push(`${k} : « ${x} » absent des fiches`); }
@@ -324,7 +334,11 @@ function lienBilan(base, prenom, bilan) {
   const sw = (Array.isArray(bilan.sources_web) ? bilan.sources_web : [])
     .filter(s => s && /^https?:\/\//.test(String(s.url || "")) && web.urls.has(s.url)).slice(0, 12)
     .map(s => ({ t: String(s.titre || s.url).slice(0, 140), u: s.url }));
-  const b = { synthese: bilan.synthese, ordre_voeux: bilan.ordre_voeux, lacunes: bilan.lacunes, calendrier: bilan.calendrier, sources_web: sw,
+  const ap = (Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []).filter(a => a && String(a.raison || "").trim()).slice(0, 8)
+    .map(a => a.id ? { i: a.id, r: String(a.raison).slice(0, 400) }
+      : (/^https?:\/\//.test(String(a.url || "")) && web.urls.has(a.url) && a.nom ? { n: String(a.nom).slice(0, 160), e: String(a.etablissement || "").slice(0, 160), u: a.url, r: String(a.raison).slice(0, 400) } : null))
+    .filter(Boolean);
+  const b = { synthese: bilan.synthese, ordre_voeux: bilan.ordre_voeux, lacunes: bilan.lacunes, calendrier: bilan.calendrier, sources_web: sw, autres_pistes: ap,
     voies: (bilan.voies || []).map(v => ({ id: v.id, rang: v.rang, ambition: v.ambition, pourquoi: v.pourquoi,
       points_vigilance: v.points_vigilance, chiffres: v.chiffres })) };
   const json = JSON.stringify({ v: 1, p: prenom, d: new Date().toISOString().slice(0, 10), b });
@@ -337,7 +351,7 @@ function emailHtml(prenom, bilan, fiches, lien) {
   const n = k => voies.filter(v => String(v.ambition || "").toLowerCase().startsWith(k)).length;
   const tuile = (val, lib, fond, coul) => `<td width="33%" style="padding:4px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${fond};border-radius:14px"><tr><td align="center" style="padding:14px 6px;font-family:Arial,sans-serif"><div style="font-size:26px;font-weight:bold;color:${coul};line-height:1.1">${val}</div><div style="font-size:12px;color:#5b6476;padding-top:2px">${lib}</div></td></tr></table></td>`;
   const bouton = `<table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td style="background:#2B55E8;border-radius:12px"><a href="${esc(lien)}" style="display:inline-block;padding:15px 30px;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none">Lire mon bilan sur CapSup &rarr;</a></td></tr></table>`;
-  const contenu = ["Tes " + voies.length + " formations classées, avec pour chacune pourquoi elle te correspond", "Les chiffres clés de chaque formation, avec leur année et leur source", "L'équilibre de ta liste de vœux", "Le calendrier et les points de vigilance"]
+  const contenu = ["Tes " + voies.length + " formations classées, avec pour chacune pourquoi elle te correspond", "Les chiffres clés de chaque formation, avec leur année et leur source", "L'équilibre de ta liste de vœux", "Le calendrier et les points de vigilance"].concat((bilan.autres_pistes || []).length ? ["D'autres pistes à explorer"] : [])
     .map(t => `<tr><td width="26" valign="top" style="padding:5px 0;font-family:Arial,sans-serif;font-size:16px;color:#2B55E8">&#10003;</td><td style="padding:5px 0;font-family:Arial,sans-serif;font-size:14px;color:#1e232a">${esc(t)}</td></tr>`).join("");
   return `<!doctype html><html><body style="margin:0;padding:0;background:#f8f5ee">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f5ee"><tr><td align="center" style="padding:28px 12px">
@@ -377,7 +391,7 @@ export const handler = async (event) => {
     if (t === "deja") { console.log("Bilan IA : limite par adresse atteinte"); return; }
   } catch (e) { console.log("Bilan IA : vérification de limite impossible", String(e)); }
 
-  let bilan = null, fiches = [], rapport = { chiffres: 0, problemes: [] }, erreur = null, ctx = null;
+  let bilan = null, fiches = [], rapport = { chiffres: 0, problemes: [] }, erreur = null, ctx = null, pistes = { ids: [], index: "" };
   web.cites = []; web.urls = new Set();
   try {
     const { cat, calendrier } = await chargerCatalogue(URL || "https://capsup.org");
@@ -394,17 +408,20 @@ export const handler = async (event) => {
     for (const i of sec.ajout) { ids.push(i); deja.add(i); }
     console.log("Bilan IA : présélection", ids.join(", "), "| région", reg || "aucune", "| session", ctx.session);
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
+    const pistesIds = [...new Set((sel.pistes || []).filter(i => !deja.has(i) && cat.some(e => e.id === i)))].slice(0, 8);
+    pistes = { ids: pistesIds, index: pistesIds.map(i => ligneIndex(cat.find(e => e.id === i))).join("\n") };
     const entree = "CONTEXTE :\n" + ctx.texte + "\n\nPROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches)
+      + "\n\nAUTRES FORMATIONS DU CATALOGUE (pour \"autres_pistes\" ; une ligne : id | nom | établissement | ville | région | type | domaine | sélectivité | frais | durée) :\n" + (pistes.index || "(aucune)")
       + "\n\n" + REPERES_TECHNO;
     bilan = await claude(SYS_BILAN, entree, 64000, MODELE, "étape 2 (rédaction) : ", [RECHERCHE_WEB]);
-    rapport = controler(bilan, fiches, profil, ctx);
+    rapport = controler(bilan, fiches, profil, ctx, pistes);
     if (rapport.problemes.length) { // une seule nouvelle tentative, avec la liste des erreurs
       let b2 = null;
       try { b2 = await claude(SYS_BILAN, entree + "\n\nUne première version contenait ces problèmes : "
         + rapport.problemes.join(" ; ") + ". Corrige-les : chaque chiffre doit venir des fiches, de PROFIL, de CONTEXTE ou d'une page web citée ; respecte la règle Session et la règle des vœux.",
         64000, MODELE, "étape 2 bis (correction) : ", [RECHERCHE_WEB]); }
       catch (e) { console.log("Bilan IA : correction impossible, première version conservée", String(e.message || e)); }
-      if (b2) { const r2 = controler(b2, fiches, profil, ctx);
+      if (b2) { const r2 = controler(b2, fiches, profil, ctx, pistes);
         if (r2.problemes.length <= rapport.problemes.length) { bilan = b2; rapport = r2; } }
     }
   } catch (e) { erreur = String(e && e.message || e); console.log("Bilan IA : erreur", erreur); }
