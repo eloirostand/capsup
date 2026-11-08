@@ -75,7 +75,7 @@ function contexteDepuis(data, calendrier, maintenant = new Date(), cat = []) {
   if (enFrance) {
     const n = cat.filter(e => e.region === data.localisation).length;
     lignes.push("RÉGION DE L'ÉLÈVE : " + data.localisation + (n ? " (" + n + " formations du catalogue dans cette région)."
-      : " : aucune formation du catalogue dans cette région. Cherche sur le web (sources officielles) les formations de son académie qui correspondent à ses domaines (en particulier les licences, où il serait prioritaire) et présente-les dans « autres_pistes » comme pistes hors catalogue, avec leur source (signale aussi ce manque dans « lacunes »)."));
+      : " : aucune formation du catalogue dans cette région. Cherche sur le web (sources officielles) les formations de son académie qui correspondent à ses domaines (en particulier les licences, où il serait prioritaire) et présente-les dans « autres_pistes » comme pistes hors catalogue, avec leur source (sans présenter cela comme un manque)."));
   }
   const prepa = prive && voie === "generale" && !moyenneFaible;
   if (prepa) lignes.push("PRÉPA PRIORITAIRE : oui (lycée privé, voie générale, moyenne d'au moins 12).");
@@ -106,7 +106,9 @@ function securites(cat, data, ctx, deja) {
   const pools = doms.map(d => cat.filter(e => e.domain === d && e.category !== "cpge" && (!reg || e.region === reg)
       && compatible(e, ctx) && respecteContraintes(e, data)
       && (nonSelective(e) ? !!(reg && e.region === reg) : (e.selectivityRate != null && e.selectivityRate >= 5)))
-    .sort((a, b) => (nonSelective(b) - nonSelective(a)) || ((b.selectivityRate || 0) - (a.selectivityRate || 0))).slice(0, 3));
+    .sort((a, b) => (nonSelective(b) - nonSelective(a))
+      // licence non sélective : places ÷ candidats n'a pas de sens (accès de droit pour les résidents du secteur, dans la limite des places) → tri par nombre de places
+      || (nonSelective(a) ? (b.capacity || 0) - (a.capacity || 0) : (b.selectivityRate || 0) - (a.selectivityRate || 0))).slice(0, 4));
   const tous = new Set(pools.flat().map(e => e.id));
   const ajout = [];
   let present = [...deja].filter(i => tous.has(i)).length;
@@ -173,7 +175,7 @@ const REPERES_TECHNO = `REPÈRES VOIE TECHNOLOGIQUE (sources officielles, à cit
 - BUT : pour chaque spécialité de BUT de chaque IUT, le recteur fixe chaque année un taux minimal de places réservées aux bacheliers technologiques (code de l'éducation, article L612-3, VII). Exemple : arrêté du recteur de la région académique Normandie du 13 avril 2026 (Parcoursup 2026) : 50 % en GEA et en Techniques de commercialisation.
 - Prépa ECT : son option technologique est réservée aux bacheliers STMG ; elle prépare aux concours des écoles de commerce (Onisep, « Que faire après le bac STMG ? »).
 - Prépas scientifiques pour bacheliers technologiques (Onisep, « Les prépas scientifiques ») : TSI, destinée aux bacheliers STI2D et STL ; TPC, pour les bacheliers STL ; TB, pour les bacheliers STL et STAV.
-Ces repères ne désignent aucune formation précise du catalogue : ne les présente pas comme des fiches CapSup.`;
+Ces repères ne désignent aucune formation précise : ne les présente pas comme des formations analysées en détail.`;
 function profilDepuis(data) {
   const exclus = ["nom", "email", "telephone", "bot-field", "form-name", "pistes_affichees", "ip", "user_agent", "referrer"];
   const p = {};
@@ -246,32 +248,42 @@ Si l'élève est en voie technologique (type_lycee / serie_bac) : privilégie le
 Choisis 8 à 10 formations pertinentes : domaine et objectifs de l'élève, contraintes de budget et de mobilité, et un mélange de vœux ambitieux et plus accessibles quand le catalogue le permet. Inclus les établissements que l'élève vise s'ils sont dans l'index. Au plus 3 CPGE ECG, de lycées différents. Évite de choisir plusieurs formations quasi identiques.
 Inclus au moins 2 formations nettement moins sélectives (sélectivité plus élevée) dans les domaines et la région de l'élève : une prépa, une licence, une double licence ou un BUT qui mène vers son objectif compte, même si ce n'est pas un diplôme à Bac+5 direct.
 Si CONTEXTE indique « PRÉPA PRIORITAIRE : oui », inclus au moins 2 CPGE correspondant à ses domaines (scientifiques pour l'ingénierie ou l'informatique, ECG pour le commerce, B/L ou D2 pour l'économie), de préférence dans sa région et de sélectivités différentes.
+Chaque domaine coché par l'élève (PROFIL « domaines ») doit être représenté par au moins une formation dans "ids" ou dans "pistes".
 Ajoute dans "pistes" 4 à 8 AUTRES formations de l'index, différentes de "ids", moins prioritaires mais intéressantes pour cet élève (autre domaine qu'il a coché, autre ville, voie différente vers son objectif, option plus accessible).
 Réponds uniquement en JSON : {"ids": ["id1", "id2", …], "pistes": ["id", …]}`;
 
-const SYS_BILAN = `Tu rédiges le bilan d'orientation d'un lycéen pour CapSup. Tu reçois CONTEXTE (date, session Parcoursup visée, calendrier, priorités calculées), PROFIL (ses réponses au formulaire) et FICHES (formations présélectionnées du catalogue CapSup, en JSON).
+const SYS_BILAN = `Tu es conseiller d'orientation chez CapSup et tu rédiges le bilan d'orientation d'un lycéen. Tu reçois CONTEXTE (date, session Parcoursup visée, calendrier, priorités calculées), PROFIL (ses réponses au formulaire) et FICHES (formations que nous avons analysées et retenues pour lui, en JSON). Ces termes techniques sont pour toi seul.
+Ton et vocabulaire (essentiel) :
+- Tu écris comme un conseiller d'orientation de CapSup qui parle à l'élève : direct, bienveillant, sûr de son analyse. Ce que contiennent FICHES, c'est « notre analyse » ; tu le présentes comme tel, sans jamais évoquer d'où viennent tes informations en interne.
+- N'écris jamais, dans aucun champ : « fiche » (sauf « fiche Parcoursup » d'une formation), « FICHES », « catalogue », « index », « base de données », « nos données », « présélection », « CONTEXTE », « PROFIL », « IA », « intelligence artificielle », « modèle », « automatique ».
+- Ne mets jamais en avant des limites de CapSup ou de ce bilan : pas de « nos données ne permettent pas », « nous n'avons pas trouvé », « nous n'avons pas fait de recherche », « absent de notre sélection », « non couvert par CapSup ».
+- Information manquante (niveau des admis, nombre de places, tarif…) : cherche-la d'abord sur le web. Si elle reste introuvable, dis qu'elle n'est pas rendue publique (« l'établissement ne publie pas le niveau de ses admis », « ce chiffre n'est pas publié par Parcoursup ») et, si c'est utile, conseille à l'élève de la demander (journées portes ouvertes, salon, service d'admission). N'utilise « Donnée non disponible » que dans "chiffres".
 Règles absolues :
 - Tu ne recommandes QUE des formations présentes dans FICHES, identifiées par leur id exact.
 - Chiffres (places, candidats, sélectivité, frais, pourcentages, dates, années) : uniquement ceux de la fiche concernée, de PROFIL, de CONTEXTE, ou d'une page trouvée par ta recherche web et citée. Pas de chiffre calculé par toi (pas de somme, pas d'arrondi). Chaque chiffre est accompagné de son année et de sa source.
-- Recherche web : tu peux et tu es encouragé à chercher des informations utiles absentes des fiches ou plus récentes (procédures, attendus, dates de la session visée, niveau des admis, débouchés, formations proches). Priorité aux sources officielles (parcoursup.gouv.fr, onisep.fr, sites des établissements, service-public.fr, enseignementsup-recherche.gouv.fr) ; une source secondaire (presse, classements) est signalée comme telle. Toute information hors fiche indique dans le texte sa source (nom du site) et son année, et chaque page utilisée figure dans "sources_web". Si une page contredit une fiche, signale la contradiction et indique ce que tu retiens. N'écris jamais dans une requête de recherche le prénom, l'email, le nom du lycée ou d'autres informations personnelles de l'élève (sa région ou son académie sont permises).
+- Recherche web : fais au moins une recherche ciblée (par exemple niveau des admis ou procédure de la session visée pour la formation la plus ambitieuse) ; tu es encouragé à chercher des informations utiles absentes des fiches ou plus récentes (procédures, attendus, dates de la session visée, niveau des admis, débouchés, formations proches). Priorité aux sources officielles (parcoursup.gouv.fr, onisep.fr, sites des établissements, service-public.fr, enseignementsup-recherche.gouv.fr) ; une source secondaire (presse, classements) est signalée comme telle. Toute information hors fiche indique dans le texte sa source (nom du site) et son année, et chaque page utilisée figure dans "sources_web". Si une page contredit une fiche, signale la contradiction et indique ce que tu retiens. N'écris jamais dans une requête de recherche le prénom, l'email, le nom du lycée ou d'autres informations personnelles de l'élève (sa région ou son académie sont permises).
 - Sans fiche ni source web citée, n'affirme aucun fait (lieu, école, procédure, débouché), même s'il te semble vrai. Si une fiche marque un chiffre « à confirmer », garde cette mention.
-- Tu ne donnes jamais de probabilité d'admission chiffrée. Le niveau d'ambition est qualitatif : "Ambitieux", "Cohérent" ou "Sécurité", justifié par la fiche. Si la fiche ne donne pas le niveau des admis, dis-le.
+- Tu ne donnes jamais de probabilité d'admission chiffrée. Le niveau d'ambition est qualitatif : "Ambitieux", "Cohérent" ou "Sécurité", justifié par la fiche. Si le niveau des admis n'est pas publié, dis-le (règle « Information manquante »).
+- Cohérence des niveaux : une formation « Cohérent » ou « Ambitieux » ne doit pas paraître plus accessible qu'une « Sécurité » sans explication. Pour une licence non sélective de sa région classée « Sécurité », explique que les candidats du secteur y sont prioritaires et que places ÷ candidats sous-estime l'accès (beaucoup de candidats acceptent une autre proposition). Ne qualifie jamais une licence non sélective de « très sélective ».
 - Sécurité : classe en « Sécurité » au moins une formation quand FICHES en contient une adaptée (moins sélective, dans ses domaines, accessible avec son profil). Une prépa, une licence, une double licence ou un BUT qui mène à son objectif (par exemple une école d'ingénieurs par concours ou admission parallèle) compte comme voie vers cet objectif, même sans Bac+5 direct. Ne classe pas en « Sécurité » une formation à l'étranger ni une formation dont l'élève ne remplit pas une condition (langue, spécialité).
-- Licences non sélectives (« non sélective · capacité limitée ») : les candidats qui résident dans le secteur de la formation (son académie ; l'Île-de-France pour les universités franciliennes) sont prioritaires, et le recteur plafonne la part de candidats non résidents. Si la formation n'est pas dans la RÉGION DE L'ÉLÈVE, signale ce plafond dans "points_vigilance" (chiffre de la fiche, ou d'une source web citée, sinon dis qu'il existe sans chiffre) et ne la classe jamais en « Sécurité ». Ne déclare dans "lacunes" l'absence d'option de sécurité qu'après avoir examiné toutes les FICHES.
+- Licences non sélectives (« non sélective · capacité limitée ») : les candidats qui résident dans le secteur de la formation (son académie ; l'Île-de-France pour les universités franciliennes) sont prioritaires, et le recteur plafonne la part de candidats non résidents. Si la formation est dans la RÉGION DE L'ÉLÈVE, ne parle pas de ce plafond (il ne le concerne pas). Si elle n'est pas dans sa région, signale ce plafond dans "points_vigilance" (chiffre de la fiche, ou d'une source web citée, sinon dis qu'il existe sans chiffre) et ne la classe jamais en « Sécurité ». Examine toutes les FICHES et AUTRES FORMATIONS avant de conclure qu'il n'y a pas d'option plus accessible ; dans ce cas, conseille concrètement (élargir à d'autres licences ou BUT de son académie, phase complémentaire), sans parler de manque.
 - PRÉPA PRIORITAIRE : si CONTEXTE l'indique, place au moins 2 CPGE de FICHES correspondant à ses domaines aux premiers rangs (rangs 1 à 3).
 - Session : les dates de candidature concernent uniquement la SESSION VISÉE de CONTEXTE. N'écris aucune date d'une session passée ou d'une autre session, même si elle figure dans une fiche ou sur une page web : une fiche datée d'une autre session ne sert pas pour le calendrier. S'il existe un CALENDRIER OFFICIEL dans CONTEXTE, utilise-le (avec sa source). Sinon, indique seulement les mois habituels (par exemple « vœux de mi-janvier à mi-mars », « réponses à partir de début juin »), sans jour ni année, en précisant qu'ils sont à revérifier quand le calendrier officiel de sa session sera publié. Pour les candidatures hors Parcoursup, même règle. Si l'élève est en Première, dis-le dans la synthèse (il candidatera l'année suivante).
+- Niveau d'anglais : utilise de la même façon pour toutes les formations le niveau déclaré dans PROFIL (« langues ») et, à côté, sa note de LVA ; si une formation exige un niveau supérieur, dis-le.
+- Domaines : chaque domaine coché dans PROFIL (« domaines ») apparaît au moins une fois, dans une voie classée ou dans "autres_pistes".
 - Langues : si l'élève est scolarisé en France, ne mentionne pas les conditions de langue destinées aux candidats étrangers ou non francophones (niveau de français, DELF/DALF, TCF…).
 - Vœux Parcoursup : ils ne sont pas classés par ordre de préférence. Dans "ordre_voeux", décris l'équilibre de la liste (part d'ambitieux, de cohérents et de sécurités, formations hors Parcoursup à part) et rappelle explicitement que les vœux ne sont pas classés ; ne dis jamais de placer un vœu « d'abord », « en premier » ou « en tête ».
 - La sélectivité est « places ÷ candidats ». N'emploie jamais « taux d'accès » et ne parle pas de propositions comme d'un taux d'accès.
-- Donnée absente : « Donnée non disponible ». Si le catalogue ne contient pas de formation adaptée à un besoin de l'élève, dis-le explicitement dans "lacunes" au lieu de forcer un substitut.
+- Si aucune formation analysée ne répond bien à un besoin de l'élève, ne force pas de substitut : propose une piste dans "autres_pistes" (formation de AUTRES FORMATIONS ou trouvée par ta recherche web, avec sa page) ou un conseil concret dans "lacunes", sans présenter cela comme un manque.
 - Ne favorise aucune voie par principe. Tutoie l'élève, parle au nom de CapSup (« nous », jamais « je »). Une CPGE ECG est en « lycée public ou privé sous contrat ».
-- Voie technologique : si PROFIL indique la voie technologique (type_lycee, serie_bac, spécialités de sa série), vérifie pour chaque formation dans la fiche (conditions, profil attendu, spécialités recommandées, part de bacheliers technologiques admis) qu'elle est accessible à sa série ; si une fiche réserve la formation au bac général, ne la recommande pas, ou seulement si l'élève la vise explicitement, en le signalant dans "points_vigilance". Tu peux t'appuyer sur REPÈRES (voie technologique) pour les généralités (taux minimal de bacheliers technologiques en BUT, prépas ECT, TSI, TPC, TB) en citant leur source ; si une voie pensée pour sa série manque au catalogue, dis-le dans "lacunes".
+- Voie technologique : si PROFIL indique la voie technologique (type_lycee, serie_bac, spécialités de sa série), vérifie pour chaque formation dans la fiche (conditions, profil attendu, spécialités recommandées, part de bacheliers technologiques admis) qu'elle est accessible à sa série ; si une fiche réserve la formation au bac général, ne la recommande pas, ou seulement si l'élève la vise explicitement, en le signalant dans "points_vigilance". Tu peux t'appuyer sur REPÈRES (voie technologique) pour les généralités (taux minimal de bacheliers technologiques en BUT, prépas ECT, TSI, TPC, TB) en citant leur source ; si une voie pensée pour sa série n'est pas parmi les formations analysées, propose-la en piste (recherche web, page citée) ou conseille-lui de la regarder.
 - N'applique pas aux bacheliers technologiques les attentes de spécialités de la voie générale (ex. « spécialité maths ») : compare plutôt avec ses spécialités de série et ses notes.
 - Phrases courtes et concrètes, sans flatterie.
+"lacunes" (affiché sous le titre « Points à vérifier de ton côté ») : 2 à 4 points concrets que l'élève doit vérifier ou faire (attendus à relire, information non publiée à demander à l'établissement, journées portes ouvertes, élargir ses vœux…). Jamais de remarque sur CapSup ou sur ce bilan.
 Réponds uniquement en JSON :
-{"synthese": "3-4 phrases", "voies": [{"id": "…", "rang": 1, "ambition": "Ambitieux|Cohérent|Sécurité", "pourquoi": "2-3 phrases liées au profil", "points_vigilance": "…", "chiffres": "chiffres avec année et source"}], "ordre_voeux": "équilibre de la liste (vœux non classés)", "lacunes": "…", "calendrier": "dates de la session visée uniquement (voir règle Session)", "sources_web": [{"titre": "…", "url": "https://…"}], "autres_pistes": [{"id": "…", "raison": "…"}, {"nom": "…", "etablissement": "…", "url": "https://…", "raison": "…"}]}
+{"synthese": "3-4 phrases", "voies": [{"id": "…", "rang": 1, "ambition": "Ambitieux|Cohérent|Sécurité", "pourquoi": "2-3 phrases liées au profil", "points_vigilance": "…", "chiffres": "chiffres avec année et source"}], "ordre_voeux": "équilibre de la liste (vœux non classés)", "lacunes": "points à vérifier de ton côté", "calendrier": "dates de la session visée uniquement (voir règle Session)", "sources_web": [{"titre": "…", "url": "https://…"}], "autres_pistes": [{"id": "…", "raison": "…"}, {"nom": "…", "etablissement": "…", "url": "https://…", "raison": "…"}]}
 "sources_web" : uniquement des pages réellement consultées par ta recherche ; liste vide si aucune.
-"autres_pistes" : 3 à 8 pistes intéressantes mais non détaillées, différentes des voies classées, chacune en une phrase liée au profil ("raison"). Formation du catalogue : {"id": "…", "raison": "…"}, avec un id de AUTRES FORMATIONS DU CATALOGUE ou de FICHES. Formation hors catalogue (trouvée par ta recherche web, par exemple une formation de son académie) : {"nom": "…", "etablissement": "…", "url": "page consultée", "raison": "…"} ; jamais de formation hors catalogue sans page consultée. Pas de chiffre dans "raison" sauf s'il figure dans la ligne d'index, la fiche ou une page citée.
+"autres_pistes" : 3 à 8 pistes intéressantes mais non détaillées, différentes des voies classées, chacune en une phrase liée au profil ("raison"). Formation analysée par CapSup : {"id": "…", "raison": "…"}, avec un id de AUTRES FORMATIONS DU CATALOGUE ou de FICHES. Autre formation (trouvée par ta recherche web, par exemple une formation de son académie) : {"nom": "…", "etablissement": "…", "url": "page consultée", "raison": "…"} ; jamais de formation hors catalogue sans page consultée. Pas de chiffre dans "raison" sauf s'il figure dans la ligne d'index, la fiche ou une page citée.
 Entre 5 et 8 voies, classées. Ta réponse finale est uniquement ce JSON.`;
 
 // ---------- Contrôle ----------
@@ -297,11 +309,26 @@ function controleDates(bilan, ctx, pb) {
   if (/(place|mets|classe|range|positionne)[^.]{0,40}(d['’]abord|en premier|en tête)/i.test(String(bilan.ordre_voeux || "")))
     pb.push("ordre_voeux : suggère un classement des vœux (les vœux Parcoursup ne sont pas classés)");
 }
+// Vocabulaire interne ou autocritique interdit dans le texte affiché à l'élève.
+const INTERDITS = [
+  [/\bfiches?\b(?!\s+(de\s+(la\s+)?formation\s+)?(sur\s+)?Parcoursup)/i, "« fiche »"],
+  [/catalogue/i, "« catalogue »"], [/\bindex\b/i, "« index »"], [/base de donn[ée]es|nos donn[ée]es/i, "« nos données »"],
+  [/pr[ée]s[ée]lection/i, "« présélection »"], [/\b(CONTEXTE|PROFIL)\b/, "terme interne"],
+  [/\bIA\b|intelligence artificielle|automatiquement/i, "mention de l'IA"],
+  [/nous n['’]avons pas (fait|effectu|trouv|pu)|ne permettent pas|non couvert|absente? de notre/i, "autocritique de CapSup"],
+];
+function controleTon(bilan, pb) {
+  const champs = [["synthese", bilan.synthese], ["ordre_voeux", bilan.ordre_voeux], ["lacunes", bilan.lacunes], ["calendrier", bilan.calendrier]];
+  for (const v of bilan.voies || []) champs.push([v.id, [v.pourquoi, v.points_vigilance].join(" ")]);
+  for (const a of Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []) if (a) champs.push(["autre piste", a.raison]);
+  for (const [k, t] of champs) for (const [re, lib] of INTERDITS) if (re.test(String(t || ""))) pb.push(`${k} : ${lib} (vocabulaire interdit, réécrire comme un conseiller)`);
+}
 function controler(bilan, fiches, profil, ctx, pistes = { ids: [], index: "" }) {
   const parId = Object.fromEntries(fiches.map(f => [f.id, f]));
   const prof = norm(JSON.stringify(profil) + REPERES_TECHNO + ctx.texte + web.cites.join(" ")), tout = norm(JSON.stringify(fiches) + pistes.index);
   const pb = []; let n = 0;
   controleDates(bilan, ctx, pb);
+  controleTon(bilan, pb);
   const sw = Array.isArray(bilan.sources_web) ? bilan.sources_web : [];
   for (const s of sw) if (!s || !/^https?:\/\//.test(String(s.url || "")) || !web.urls.has(s.url)) pb.push(`source web non consultée : ${s && s.url}`);
   if (!Array.isArray(bilan.voies) || bilan.voies.length < 3) pb.push("moins de 3 voies");
@@ -360,7 +387,7 @@ function emailHtml(prenom, bilan, fiches, lien) {
 <tr><td style="background:#ffffff;border:1.5px solid #c9d4f6;border-radius:20px;padding:28px 24px">
 <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#2B55E8">Ton bilan d'orientation</div>
 <div style="font-family:Arial,sans-serif;font-size:26px;font-weight:bold;color:#1e232a;padding:6px 0 10px">${prenom ? esc(prenom) + ", ton" : "Ton"} bilan est prêt</div>
-<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#3d4452">Nous avons étudié tes réponses et sélectionné dans notre catalogue les formations qui correspondent le mieux à ton profil.</div>
+<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#3d4452">Nous avons étudié tes réponses et sélectionné les formations qui correspondent le mieux à ton profil.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 8px"><tr>${tuile(n("amb"), "ambitieuses", "#efeafd", "#5b21b6")}${tuile(voies.length - n("amb") - n("s"), "cohérentes", "#e8eefc", "#1e40af")}${tuile(n("s"), "de sécurité", "#fff4dc", "#92400e")}</tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 22px">${contenu}</table>
 ${bouton}
@@ -408,7 +435,8 @@ export const handler = async (event) => {
     for (const i of sec.ajout) { ids.push(i); deja.add(i); }
     console.log("Bilan IA : présélection", ids.join(", "), "| région", reg || "aucune", "| session", ctx.session);
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
-    const pistesIds = [...new Set((sel.pistes || []).filter(i => !deja.has(i) && cat.some(e => e.id === i)))].slice(0, 8);
+    // pistes de l'étape 1, puis les options plus accessibles de la région non retenues (pour qu'aucune ne soit ignorée)
+    const pistesIds = [...new Set([...(sel.pistes || []).slice(0, 8), ...sec.pool].filter(i => !deja.has(i) && cat.some(e => e.id === i)))].slice(0, 12);
     pistes = { ids: pistesIds, index: pistesIds.map(i => ligneIndex(cat.find(e => e.id === i))).join("\n") };
     const entree = "CONTEXTE :\n" + ctx.texte + "\n\nPROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches)
       + "\n\nAUTRES FORMATIONS DU CATALOGUE (pour \"autres_pistes\" ; une ligne : id | nom | établissement | ville | région | type | domaine | sélectivité | frais | durée) :\n" + (pistes.index || "(aucune)")
@@ -418,7 +446,7 @@ export const handler = async (event) => {
     if (rapport.problemes.length) { // une seule nouvelle tentative, avec la liste des erreurs
       let b2 = null;
       try { b2 = await claude(SYS_BILAN, entree + "\n\nUne première version contenait ces problèmes : "
-        + rapport.problemes.join(" ; ") + ". Corrige-les : chaque chiffre doit venir des fiches, de PROFIL, de CONTEXTE ou d'une page web citée ; respecte la règle Session et la règle des vœux.",
+        + rapport.problemes.join(" ; ") + ". Corrige-les : chaque chiffre doit venir des fiches, de PROFIL, de CONTEXTE ou d'une page web citée ; respecte la règle Session, la règle des vœux et les règles « Ton et vocabulaire ».",
         64000, MODELE, "étape 2 bis (correction) : ", [RECHERCHE_WEB]); }
       catch (e) { console.log("Bilan IA : correction impossible, première version conservée", String(e.message || e)); }
       if (b2) { const r2 = controler(b2, fiches, profil, ctx, pistes);
