@@ -20,10 +20,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     <script src="/assets/anim-1031.js" defer></script>
-    <script type="module" crossorigin src="/assets/index-1109-logo.js"></script>
+    <script type="module" crossorigin src="/assets/index-1109-avis.js"></script>
     <script defer src="/assets/extras-1102.js"></script>
     <script src="/assets/email-1109.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-1104-calendrier.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-1109-avis.css">
     <script src="/assets/stats-1108.js"></script>
     <script defer src="https://cloud.umami.is/script.js" data-website-id="63344602-2dbd-4f11-ba48-fa6e50dcf7d4" data-before-send="csUmamiBeforeSend"></script>
   </head>
@@ -39,6 +39,11 @@
       <input name="objectifs_post_bac" /><input name="etablissements_vises" /><input name="objectif_long_terme" /><input name="niveau_vise" /><input name="secteurs_vises" />
       <textarea name="resultats_scolaires"></textarea><textarea name="objectif_precis"></textarea><textarea name="contraintes"></textarea><input name="pistes_affichees" />
       
+    </form>
+    <form name="avis" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="avis" />
+      <input name="bot-field" />
+      <input name="note" /><textarea name="commentaire"></textarea><input name="prenom" /><input name="profil" /><input name="service" /><input name="mois_utilisation" /><input name="email" type="email" /><input name="consentement_publication" /><input name="origine" />
     </form>
     <div id="root">
 <header><a class="brand" href="/">CapSup</a><nav><a href="/#explorer">Formations</a><a href="/#mon-bilan">Mon bilan</a></nav></header><main><h1>Calendrier Parcoursup 2027</h1><p class="sub">Les dates clés de la procédure Parcoursup 2027, d'après le calendrier officiel publié en octobre 2026.</p><ul><li><strong>Jeudi 17 décembre 2026</strong> : Ouverture de la carte des formations 2027 sur parcoursup.gouv.fr.</li><li><strong>Lundi 18 janvier 2027</strong> : Ouverture des inscriptions et de la formulation des vœux (jusqu'à 10 vœux, plus 10 en apprentissage).</li><li><strong>Jeudi 11 mars 2027</strong> : Dernier jour pour formuler ses vœux.</li><li><strong>Jeudi 1er avril 2027</strong> : Dernier jour pour compléter son dossier et confirmer ses vœux.</li><li><strong>Mardi 1er juin 2027</strong> : Début de la phase d'admission principale.</li><li><strong>Du vendredi 4 au lundi 7 juin 2027</strong> : Classement des vœux en attente.</li><li><strong>Jeudi 10 juin 2027</strong> : Début de la phase complémentaire.</li><li><strong>Samedi 10 juillet 2027</strong> : Fin de la phase principale.</li><li><strong>Jeudi 9 septembre 2027</strong> : Fin de la phase complémentaire.</li></ul><p>Source : <a href="https://www.parcoursup.gouv.fr/sites/default/files/database/documents/2026-10/calendrier-parcoursup-2027-805_1.pdf">calendrier Parcoursup 2027 (parcoursup.gouv.fr)</a>.</p><div class="cta"><a class="btn p" href="/#mon-bilan">Préparer mes vœux avec le bilan</a><a class="btn s" href="/#explorer">Explorer les formations</a></div></main><footer><p>CapSup compare les formations post-bac avec des données sourcées, sans algorithme sponsorisé.</p></footer></div>
