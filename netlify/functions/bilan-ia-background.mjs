@@ -11,6 +11,7 @@
 //    (rien n'est envoyé à l'élève sans relecture) et prévient CapSup.
 import { createHash } from "node:crypto";
 import { deflateRawSync } from "node:zlib";
+import { adresseRefusee } from "./verifier-email.mjs";
 
 const MODELE = "claude-sonnet-5-5";       // rédaction du bilan
 const MODELE_TRI = "claude-haiku-5-5";     // étape 1 (présélection), moins chère
@@ -290,6 +291,72 @@ Entre 5 et 8 voies, classées. Ta réponse finale est uniquement ce JSON.`;
 const norm = s => String(s).replace(/[  \s]/g, "").replace(/,/g, ".");
 const nombres = t => (String(t || "").match(/\d[\d\s  ]*(?:[.,]\d+)?/g) || []).map(x => norm(x).replace(/\.$/, "")).filter(Boolean);
 const RE_MOIS = "janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre";
+
+// Identifiant mal recopié par l'IA (ex. « double-licence-droit-eco-assas » pour « double-licence-droit-eco-gestion-assas ») :
+// rattaché à l'identifiant existant quand un seul candidat convient (mêmes mots en plus ou en moins, sinon ≤ 3 caractères d'écart).
+const motsId = s => String(s || "").toLowerCase().split(/[-_\s]+/).filter(Boolean);
+function ecart(a, b) {
+  const d = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let p = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; }
+  }
+  return d[b.length];
+}
+function idProche(id, ids) {
+  if (!id || ids.includes(id)) return id || null;
+  const m = motsId(id);
+  // mots omis par l'IA (l'id existant contient tous les mots de l'id fautif) ou un seul mot ajouté ; ambigu → écart de caractères
+  const inclus = ids.filter(i => { const n = motsId(i); return m.every(x => n.includes(x)) || (n.every(x => m.includes(x)) && m.length - n.length <= 1); });
+  if (inclus.length === 1) return inclus[0];
+  const proches = (inclus.length ? inclus : ids).map(i => [i, ecart(id, i)]).filter(([, x]) => x <= 3).sort((a, b) => a[1] - b[1]);
+  return proches.length && (proches.length === 1 || proches[1][1] > proches[0][1]) ? proches[0][0] : null;
+}
+// Corrige les id des voies et des autres pistes. Une voie rattachée à une formation du catalogue absente des fiches
+// fournies ajoute sa fiche (pour que ses chiffres soient contrôlés et qu'elle s'affiche).
+function reparerIds(bilan, cat, fiches, pistes) {
+  const corr = [];
+  if (!bilan) return corr;
+  const idsCat = cat.map(e => e.id);
+  for (const v of Array.isArray(bilan.voies) ? bilan.voies : []) {
+    if (!v || fiches.some(f => f.id === v.id)) continue;
+    const ok = idProche(v.id, fiches.map(f => f.id)) || idProche(v.id, idsCat);
+    if (!ok) continue;
+    if (!fiches.some(f => f.id === ok)) fiches.push(ficheCompacte(cat.find(e => e.id === ok)));
+    corr.push(v.id + " → " + ok); v.id = ok;
+  }
+  const permis = [...pistes.ids, ...fiches.map(f => f.id)];
+  for (const a of Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []) {
+    if (!a || !a.id || permis.includes(a.id)) continue;
+    const ok = idProche(a.id, permis);
+    if (ok) { corr.push(a.id + " → " + ok); a.id = ok; }
+  }
+  return corr;
+}
+// « Autres pistes » : un chiffre doit figurer dans la ligne d'index, une fiche, le profil, le contexte ou un extrait cité
+// d'une page consultée. Sinon il est retiré avant l'envoi (parenthèse qui le contient, sinon la phrase) ;
+// une piste dont il ne reste rien est supprimée.
+function retirerChiffresNonSources(bilan, fiches, profil, ctx, pistes) {
+  const retires = [];
+  if (!bilan || !Array.isArray(bilan.autres_pistes)) return retires;
+  const prof = norm(JSON.stringify(profil) + REPERES_TECHNO + ctx.texte + web.cites.join(" ")), tout = norm(JSON.stringify(fiches) + pistes.index);
+  const source = x => tout.includes(x) || prof.includes(x);
+  const douteux = t => nombres(t).filter(x => !source(x));
+  bilan.autres_pistes = bilan.autres_pistes.filter(a => {
+    if (!a || !String(a.raison || "").trim()) return true; // laissé au contrôle (« autre piste sans raison »)
+    const bad = douteux(a.raison);
+    if (!bad.length) return true;
+    retires.push(...bad);
+    let t = String(a.raison).replace(/\s*\([^()]*\)/g, p => douteux(p).length ? "" : p);
+    t = t.split(/(?<=[.!?])\s+/).filter(s => !douteux(s).length).join(" ")
+      .replace(/\s+([,.])/g, "$1").replace(/,\s*,/g, ",").replace(/\s{2,}/g, " ").trim();
+    if (!t || t.length < 20) return false;
+    a.raison = t;
+    return true;
+  });
+  return retires;
+}
+
 function controleDates(bilan, ctx, pb) {
   if (!ctx.session) return;
   const S = ctx.session;
@@ -409,6 +476,20 @@ export const handler = async (event) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { console.log("Bilan IA : email invalide"); return; }
   const profil = profilDepuis(data);
 
+  // Domaine sans serveur de messagerie (adresse mal saisie) : aucun appel à l'API, alerte à CapSup.
+  let refusee = false;
+  try { refusee = await adresseRefusee(email.split("@").pop()); } catch (e) { refusee = false; }
+  if (refusee) {
+    console.log("Bilan IA : domaine email sans messagerie, bilan non généré");
+    try {
+      await fetch(BILAN_SCRIPT_URL, { method: "POST", redirect: "follow", body: JSON.stringify({
+        action: "brouillon", token: BILAN_TOKEN, id: String(id || ""), to: email, prenom, sujet: "", html: "", envoyer: false,
+        rapport: "ADRESSE EMAIL INVALIDE : le domaine « " + email.split("@").pop() + " » ne reçoit pas d'emails. Aucun bilan généré, aucun appel à l'API. "
+          + "Si l'élève a laissé un téléphone, il est dans Netlify > Forms > bilan." }) });
+    } catch (e) { console.log("Bilan IA : alerte impossible", String(e)); }
+    return;
+  }
+
   // Limite par adresse email : le script répond « deja » si un bilan a été envoyé récemment à cette adresse
   // (il prévient alors l'élève). Toute autre réponse (ou erreur) laisse continuer.
   try {
@@ -419,6 +500,7 @@ export const handler = async (event) => {
   } catch (e) { console.log("Bilan IA : vérification de limite impossible", String(e)); }
 
   let bilan = null, fiches = [], rapport = { chiffres: 0, problemes: [] }, erreur = null, ctx = null, pistes = { ids: [], index: "" };
+  let ids_corriges = [], chiffres_retires = [];
   web.cites = []; web.urls = new Set();
   try {
     const { cat, calendrier } = await chargerCatalogue(URL || "https://capsup.org");
@@ -442,6 +524,8 @@ export const handler = async (event) => {
       + "\n\nAUTRES FORMATIONS DU CATALOGUE (pour \"autres_pistes\" ; une ligne : id | nom | établissement | ville | région | type | domaine | sélectivité | frais | durée) :\n" + (pistes.index || "(aucune)")
       + "\n\n" + REPERES_TECHNO;
     bilan = await claude(SYS_BILAN, entree, 64000, MODELE, "étape 2 (rédaction) : ", [RECHERCHE_WEB]);
+    ids_corriges.push(...reparerIds(bilan, cat, fiches, pistes));
+    chiffres_retires.push(...retirerChiffresNonSources(bilan, fiches, profil, ctx, pistes));
     rapport = controler(bilan, fiches, profil, ctx, pistes);
     if (rapport.problemes.length) { // une seule nouvelle tentative, avec la liste des erreurs
       let b2 = null;
@@ -449,8 +533,10 @@ export const handler = async (event) => {
         + rapport.problemes.join(" ; ") + ". Corrige-les : chaque chiffre doit venir des fiches, de PROFIL, de CONTEXTE ou d'une page web citée ; respecte la règle Session, la règle des vœux et les règles « Ton et vocabulaire ».",
         64000, MODELE, "étape 2 bis (correction) : ", [RECHERCHE_WEB]); }
       catch (e) { console.log("Bilan IA : correction impossible, première version conservée", String(e.message || e)); }
-      if (b2) { const r2 = controler(b2, fiches, profil, ctx, pistes);
-        if (r2.problemes.length <= rapport.problemes.length) { bilan = b2; rapport = r2; } }
+      if (b2) {
+        const c2 = reparerIds(b2, cat, fiches, pistes), x2 = retirerChiffresNonSources(b2, fiches, profil, ctx, pistes);
+        const r2 = controler(b2, fiches, profil, ctx, pistes);
+        if (r2.problemes.length <= rapport.problemes.length) { bilan = b2; rapport = r2; ids_corriges = c2; chiffres_retires = x2; } }
     }
   } catch (e) { erreur = String(e && e.message || e); console.log("Bilan IA : erreur", erreur); }
 
@@ -463,6 +549,8 @@ export const handler = async (event) => {
       : (rapport.problemes.length ? "À VÉRIFIER : " + rapport.problemes.join(" ; ")
         : "Contrôle automatique : " + rapport.chiffres + " chiffres vérifiés, tous présents dans les fiches, le profil ou les pages web citées ("
           + ((bilan && bilan.sources_web) || []).length + " sources web).")
+      + (ids_corriges.length ? " Identifiants corrigés automatiquement : " + ids_corriges.join(", ") + "." : "")
+      + (chiffres_retires.length ? " Chiffres retirés des « autres pistes » faute de source citée : " + chiffres_retires.join(", ") + "." : "")
       + " Relire aussi les affirmations sans chiffre (lieux, procédures), que le contrôle ne vérifie pas.",
   };
   const r = await fetch(BILAN_SCRIPT_URL, { method: "POST", body: JSON.stringify(corps), redirect: "follow" });
