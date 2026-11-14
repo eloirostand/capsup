@@ -967,3 +967,5 @@ button.cmp-chip-more:hover{background:#e7e0d2}
 .cs-hcard .cs-hc-act{gap:.15rem}
 .cs-hcard .cs-hc-cmp{height:2.15rem}
 .cs-hcard .cs-hc-link{padding:.3rem 0}
+/* v95 : logo d'établissement sur les cartes Explorer */
+article[data-cat] .cmp-logo-xs{width:1.6rem;height:1.6rem;border-width:1px}
