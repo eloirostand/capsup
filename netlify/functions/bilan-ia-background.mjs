@@ -1,7 +1,8 @@
 // CapSup — génération du brouillon de bilan (fonction d'arrière-plan, 15 min max).
 // 1. Lit le catalogue réel dans le bundle publié du site.
 // 2. Étape 1 (IA) : choisit 8 à 14 fiches adaptées au profil, à partir d'un index court.
-//    Le code ajoute ensuite au moins 2 formations moins sélectives (domaines et région de l'élève)
+//    Le code ajoute ensuite au moins 2 formations moins sélectives (domaines et région de l'élève ; pour une licence
+//    non sélective : son académie, déduite du code postal de son lycée dans l'annuaire de l'éducation)
 //    et, pour un élève de lycée privé en voie générale (moyenne ≥ 12), au moins 2 CPGE.
 // 3. Étape 2 (IA) : rédige le bilan à partir de ces fiches, avec recherche web autorisée (sources citées),
 //    pour la session Parcoursup calculée à partir de la classe (Première → année suivante).
@@ -51,10 +52,54 @@ function lireCalendrier(src) {
   } catch (e) { return null; }
 }
 
+// ---------- Académie (secteur des licences non sélectives) ----------
+// Départements → académie (Paris, Créteil, Versailles regroupées : secteur francilien des universités d'Île-de-France).
+const ACAD_DEP = {};
+for (const [a, deps] of Object.entries({
+  "Aix-Marseille": "04 05 13 84", "Amiens": "02 60 80", "Besançon": "25 39 70 90", "Bordeaux": "24 33 40 47 64",
+  "Clermont-Ferrand": "03 15 43 63", "Corse": "2A 2B", "Île-de-France": "75 77 78 91 92 93 94 95", "Dijon": "21 58 71 89",
+  "Grenoble": "07 26 38 73 74", "Lille": "59 62", "Limoges": "19 23 87", "Lyon": "01 42 69", "Montpellier": "11 30 34 48 66",
+  "Nancy-Metz": "54 55 57 88", "Nantes": "44 49 53 72 85", "Nice": "06 83", "Normandie": "14 27 50 61 76",
+  "Orléans-Tours": "18 28 36 37 41 45", "Poitiers": "16 17 79 86", "Reims": "08 10 51 52", "Rennes": "22 29 35 56",
+  "Strasbourg": "67 68", "Toulouse": "09 12 31 32 46 65 81 82", "Guadeloupe": "971", "Martinique": "972", "Guyane": "973",
+  "La Réunion": "974", "Mayotte": "976" })) for (const d of deps.split(" ")) ACAD_DEP[d] = a;
+// Fiches sans code de département : ville ou nom de département.
+const ACAD_LIEU = { paris: "Île-de-France", versailles: "Île-de-France", "neuilly-sur-seine": "Île-de-France", "rueil-malmaison": "Île-de-France",
+  bobigny: "Île-de-France", sceaux: "Île-de-France", orsay: "Île-de-France", cergy: "Île-de-France", lyon: "Lyon", toulouse: "Toulouse",
+  lille: "Lille", douai: "Lille", bordeaux: "Bordeaux", marseille: "Aix-Marseille", nice: "Nice", "le mans": "Nantes", nantes: "Nantes",
+  angers: "Nantes", montpellier: "Montpellier", reims: "Reims", grenoble: "Grenoble",
+  "haute-garonne": "Toulouse", "isère": "Grenoble", "loire-atlantique": "Nantes", "hérault": "Montpellier" };
+const minus = s => String(s || "").trim().toLowerCase();
+function academieFiche(e) {
+  const m = String(e.department || "").match(/\((\d{2,3}|2[AB])\)/) || String(e.department || "").match(/^(\d{2,3}|2[AB])$/);
+  if (m && ACAD_DEP[m[1]]) return ACAD_DEP[m[1]];
+  return ACAD_LIEU[minus(e.city)] || ACAD_LIEU[minus(e.department)] || null;
+}
+const depDepuisCP = cp => { cp = String(cp || ""); if (!/^\d{5}$/.test(cp)) return null;
+  if (cp.startsWith("97")) return cp.slice(0, 3); if (cp.startsWith("20")) return Number(cp) < 20200 ? "2A" : "2B"; return cp.slice(0, 2); };
+// Académie de l'élève : code postal de son lycée (annuaire de l'éducation, via /.netlify/functions/lycees).
+// Le champ lycee_nom vaut « Nom (Commune) ». null si lycée saisi librement ou introuvable.
+async function academieEleve(data, base) {
+  const m = String(data.lycee_nom || "").match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+  if (!m) return null;
+  const nom = minus(m[1]), commune = minus(m[2]);
+  try {
+    const r = await fetch(base + "/.netlify/functions/lycees");
+    if (!r.ok) return null;
+    const l = (await r.json()).l || [];
+    const memeCommune = l.filter(x => minus(x[1]) === commune);
+    const choix = memeCommune.filter(x => minus(x[0]) === nom);
+    const deps = new Set((choix.length ? choix : memeCommune).map(x => depDepuisCP(x[2])).filter(Boolean));
+    if (deps.size !== 1) return null;
+    const dep = [...deps][0];
+    return ACAD_DEP[dep] ? { academie: ACAD_DEP[dep], departement: dep } : null;
+  } catch (e) { console.log("Bilan IA : académie introuvable", String(e)); return null; }
+}
+
 // ---------- Contexte calculé (session visée, priorités) ----------
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 const dateFr = d => { const [a, m, j] = String(d).split("-").map(Number); return (j === 1 ? "1er" : j) + " " + MOIS[m - 1] + " " + a; };
-function contexteDepuis(data, calendrier, maintenant = new Date(), cat = []) {
+function contexteDepuis(data, calendrier, maintenant = new Date(), cat = [], acad = null) {
   const paris = new Date(maintenant.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
   const finAnnee = paris.getMonth() >= 8 ? paris.getFullYear() + 1 : paris.getFullYear(); // année scolaire en cours : sept. → août
   const classe = String(data.classe || "");
@@ -77,10 +122,23 @@ function contexteDepuis(data, calendrier, maintenant = new Date(), cat = []) {
     const n = cat.filter(e => e.region === data.localisation).length;
     lignes.push("RÉGION DE L'ÉLÈVE : " + data.localisation + (n ? " (" + n + " formations du catalogue dans cette région)."
       : " : aucune formation du catalogue dans cette région. Cherche sur le web (sources officielles) les formations de son académie qui correspondent à ses domaines (en particulier les licences, où il serait prioritaire) et présente-les dans « autres_pistes » comme pistes hors catalogue, avec leur source (sans présenter cela comme un manque)."));
+    if (acad) {
+      const doms = domainesEleve(data);
+      const locales = cat.filter(e => e._acad === acad.academie && (!doms.length || doms.includes(e.domain)));
+      lignes.push("ACADÉMIE DE L'ÉLÈVE : " + acad.academie + " (département " + acad.departement + " de son lycée, annuaire de l'éducation). "
+        + "C'est son secteur pour les licences non sélectives : chaque formation porte son académie (champ « academie »). "
+        + "Une région peut compter plusieurs académies : une licence de sa région mais d'une autre académie est hors secteur pour lui. "
+        + (locales.some(e => e.category === "but") ? "" : "Aucun BUT de son académie dans ses domaines parmi nos formations analysées : cherche sur le web (parcoursup.gouv.fr, onisep.fr, sites des IUT) un ou deux BUT de son académie dans ses domaines et propose-les dans « autres_pistes » avec leur page. ")
+        + (locales.length ? "" : "Aucune formation de son académie dans ses domaines parmi nos formations analysées : cherche sur le web les licences et BUT de son académie et propose-les dans « autres_pistes » avec leur page."));
+    } else lignes.push("ACADÉMIE DE L'ÉLÈVE : non déterminée (lycée saisi librement ou introuvable). Pour une licence non sélective de sa région, signale qu'un plafond de non-résidents peut s'appliquer si la région compte plusieurs académies, et ne la classe « Sécurité » que si la région ne compte qu'une académie.");
   }
+  const obj = String(data.objectifs_post_bac || "");
+  const voulus = [/\bBUT\b/i.test(obj) && "BUT", /\bBTS\b/i.test(obj) && "BTS", /[ée]tranger/i.test(obj) && "études à l'étranger"].filter(Boolean);
+  if (voulus.length) lignes.push("TYPES DE FORMATION COCHÉS PAR L'ÉLÈVE : " + voulus.join(", ") + ". Chacun doit apparaître au moins une fois, dans une voie classée ou dans « autres_pistes » (formation analysée, ou trouvée par ta recherche web avec sa page, de préférence dans son académie)"
+    + (voulus.includes("études à l'étranger") && data.mobilite !== "europe" ? " ; pour l'étranger, sa mobilité ne l'autorise pas : dis-le en une phrase au lieu de proposer une formation." : "."));
   const prepa = prive && voie === "generale" && !moyenneFaible;
   if (prepa) lignes.push("PRÉPA PRIORITAIRE : oui (lycée privé, voie générale, moyenne d'au moins 12).");
-  return { session, officiel, voie, enFrance, prepa, texte: lignes.join("\n") };
+  return { session, officiel, voie, enFrance, prepa, academie: acad ? acad.academie : null, texte: lignes.join("\n") };
 }
 
 // ---------- Compléments imposés à la présélection ----------
@@ -102,12 +160,13 @@ function respecteContraintes(e, data) {
 const nonSelective = e => /non s[ée]lective/i.test(String(e.selectivityLabel || ""));
 function securites(cat, data, ctx, deja) {
   const reg = regionEleve(data, cat), doms = domainesEleve(data);
-  // Une licence non sélective n'est une sécurité que dans la région de l'élève (priorité aux résidents du secteur,
-  // quota de non-résidents ailleurs).
+  // Une licence non sélective n'est une sécurité que dans le secteur de l'élève : son académie (priorité aux résidents,
+  // quota de non-résidents ailleurs, y compris dans une autre académie de sa région). Académie inconnue : sa région.
+  const secteur = e => ctx.academie ? e._acad === ctx.academie : !!(reg && e.region === reg);
   const pools = doms.map(d => cat.filter(e => e.domain === d && e.category !== "cpge" && (!reg || e.region === reg)
       && compatible(e, ctx) && respecteContraintes(e, data)
-      && (nonSelective(e) ? !!(reg && e.region === reg) : (e.selectivityRate != null && e.selectivityRate >= 5)))
-    .sort((a, b) => (nonSelective(b) - nonSelective(a))
+      && (nonSelective(e) ? secteur(e) : (e.selectivityRate != null && e.selectivityRate >= 5)))
+    .sort((a, b) => (nonSelective(b) - nonSelective(a)) || (secteur(b) - secteur(a))
       // licence non sélective : places ÷ candidats n'a pas de sens (accès de droit pour les résidents du secteur, dans la limite des places) → tri par nombre de places
       || (nonSelective(a) ? (b.capacity || 0) - (a.capacity || 0) : (b.selectivityRate || 0) - (a.selectivityRate || 0))).slice(0, 4));
   const tous = new Set(pools.flat().map(e => e.id));
@@ -130,7 +189,7 @@ function prepas(cat, data, ctx, deja) {
 }
 
 function ligneIndex(e) {
-  return [e.id, e.name, e.university, e.city, e.region, e.categoryLabel, e.domain,
+  return [e.id, e.name, e.university, e.city, e.region, "académie " + (e._acad || "?"), e.categoryLabel, e.domain,
     e.selectivityRate != null ? e.selectivityRate + " %" : "?", e.feesDisplay || "?", e.durationLabel || "",
     e.bacTechnoPct != null ? "bac techno admis " + e.bacTechnoPct + " %" : "bac techno admis ?"].join(" | ");
 }
@@ -140,7 +199,7 @@ function ficheCompacte(e) {
   const L = e.legacy || {};
   const F = L.fiabilite || {};
   return {
-    id: e.id, nom: e.name, etablissement: e.university, ville: e.city, region: e.region,
+    id: e.id, nom: e.name, etablissement: e.university, ville: e.city, region: e.region, academie: e._acad || null,
     type: e.categoryLabel, domaine: e.domain, duree: e.durationLabel,
     places: e.capacity, candidats: e.applicantsCount,
     selectivite_pct: e.selectivityRate, selectivite_libelle: e.selectivityLabel,
@@ -243,10 +302,11 @@ async function appelClaude(system, user, maxTokens, modele, outils) {
 }
 
 const SYS_SELECTION = `Tu présélectionnes des formations du catalogue CapSup pour un lycéen.
-Tu reçois son PROFIL et l'INDEX du catalogue (une ligne par formation : id | nom | établissement | ville | région | type | domaine | sélectivité = places ÷ candidats | frais | durée).
+Tu reçois son PROFIL et l'INDEX du catalogue (une ligne par formation : id | nom | établissement | ville | région | académie | type | domaine | sélectivité = places ÷ candidats | frais | durée).
 Le champ « bac techno admis » indique la part de bacheliers technologiques parmi les admis quand la fiche la renseigne.
 Si l'élève est en voie technologique (type_lycee / serie_bac) : privilégie les formations qui admettent des bacheliers technologiques (BUT, BTS, part « bac techno admis » supérieure à 0 %) et en lien avec sa série ; n'inclus une formation à 0 % de bacheliers technologiques admis (CPGE ECG, B/L, scientifiques, CPES… réservées au bac général d'après leurs fiches) que si l'élève la vise explicitement.
 Choisis 8 à 10 formations pertinentes : domaine et objectifs de l'élève, contraintes de budget et de mobilité, et un mélange de vœux ambitieux et plus accessibles quand le catalogue le permet. Inclus les établissements que l'élève vise s'ils sont dans l'index. Au plus 3 CPGE ECG, de lycées différents. Évite de choisir plusieurs formations quasi identiques.
+Si CONTEXTE donne l'ACADÉMIE DE L'ÉLÈVE, inclus les licences non sélectives et BUT de son académie qui correspondent à ses domaines (il est prioritaire dans les licences de son académie, pas dans celles d'une autre académie de sa région).
 Inclus au moins 2 formations nettement moins sélectives (sélectivité plus élevée) dans les domaines et la région de l'élève : une prépa, une licence, une double licence ou un BUT qui mène vers son objectif compte, même si ce n'est pas un diplôme à Bac+5 direct.
 Si CONTEXTE indique « PRÉPA PRIORITAIRE : oui », inclus au moins 2 CPGE correspondant à ses domaines (scientifiques pour l'ingénierie ou l'informatique, ECG pour le commerce, B/L ou D2 pour l'économie), de préférence dans sa région et de sélectivités différentes.
 Chaque domaine coché par l'élève (PROFIL « domaines ») doit être représenté par au moins une formation dans "ids" ou dans "pistes".
@@ -267,7 +327,8 @@ Règles absolues :
 - Tu ne donnes jamais de probabilité d'admission chiffrée. Le niveau d'ambition est qualitatif : "Ambitieux", "Cohérent" ou "Sécurité", justifié par la fiche. Si le niveau des admis n'est pas publié, dis-le (règle « Information manquante »).
 - Cohérence des niveaux : une formation « Cohérent » ou « Ambitieux » ne doit pas paraître plus accessible qu'une « Sécurité » sans explication. Pour une licence non sélective de sa région classée « Sécurité », explique que les candidats du secteur y sont prioritaires et que places ÷ candidats sous-estime l'accès (beaucoup de candidats acceptent une autre proposition). Ne qualifie jamais une licence non sélective de « très sélective ».
 - Sécurité : classe en « Sécurité » au moins une formation quand FICHES en contient une adaptée (moins sélective, dans ses domaines, accessible avec son profil). Une prépa, une licence, une double licence ou un BUT qui mène à son objectif (par exemple une école d'ingénieurs par concours ou admission parallèle) compte comme voie vers cet objectif, même sans Bac+5 direct. Ne classe pas en « Sécurité » une formation à l'étranger ni une formation dont l'élève ne remplit pas une condition (langue, spécialité).
-- Licences non sélectives (« non sélective · capacité limitée ») : les candidats qui résident dans le secteur de la formation (son académie ; l'Île-de-France pour les universités franciliennes) sont prioritaires, et le recteur plafonne la part de candidats non résidents. Si la formation est dans la RÉGION DE L'ÉLÈVE, ne parle pas de ce plafond (il ne le concerne pas). Si elle n'est pas dans sa région, signale ce plafond dans "points_vigilance" (chiffre de la fiche, ou d'une source web citée, sinon dis qu'il existe sans chiffre) et ne la classe jamais en « Sécurité ». Examine toutes les FICHES et AUTRES FORMATIONS avant de conclure qu'il n'y a pas d'option plus accessible ; dans ce cas, conseille concrètement (élargir à d'autres licences ou BUT de son académie, phase complémentaire), sans parler de manque.
+- Licences non sélectives (« non sélective · capacité limitée ») : les candidats qui résident dans le secteur de la formation (son académie ; l'Île-de-France pour les universités franciliennes) sont prioritaires, et le recteur plafonne la part de candidats non résidents. Le secteur de l'élève est l'ACADÉMIE DE L'ÉLÈVE de CONTEXTE (champ « academie » de chaque fiche), pas sa région : une région peut compter plusieurs académies (Occitanie : Toulouse et Montpellier ; Auvergne-Rhône-Alpes : Lyon, Grenoble et Clermont-Ferrand ; etc.). Si la formation est dans son académie, ne parle pas de ce plafond. Sinon, même dans sa région, signale ce plafond dans "points_vigilance" (chiffre de la fiche, ou d'une source web citée, sinon dis qu'il existe sans chiffre) et ne la classe jamais en « Sécurité » ; un « bassin » ou des départements cités dans les conseils d'une formation ne remplacent pas le secteur officiel (tu peux les citer comme conseil de la formation, sans en conclure qu'il est prioritaire). Hors de son académie, avec un plafond de non-résidents et une sélectivité (places ÷ candidats) inférieure à 10 %, classe-la « Ambitieux ».
+- Sécurité de son académie : si FICHES contient une licence non sélective ou un BUT de son académie dans ses domaines, accessible à sa série, classe-la en « Sécurité » plutôt qu'une formation d'une autre académie. Examine toutes les FICHES et AUTRES FORMATIONS avant de conclure qu'il n'y a pas d'option plus accessible ; dans ce cas, conseille concrètement (élargir à d'autres licences ou BUT de son académie, phase complémentaire), sans parler de manque.
 - PRÉPA PRIORITAIRE : si CONTEXTE l'indique, place au moins 2 CPGE de FICHES correspondant à ses domaines aux premiers rangs (rangs 1 à 3).
 - Session : les dates de candidature concernent uniquement la SESSION VISÉE de CONTEXTE. N'écris aucune date d'une session passée ou d'une autre session, même si elle figure dans une fiche ou sur une page web : une fiche datée d'une autre session ne sert pas pour le calendrier. S'il existe un CALENDRIER OFFICIEL dans CONTEXTE, utilise-le (avec sa source). Sinon, indique seulement les mois habituels (par exemple « vœux de mi-janvier à mi-mars », « réponses à partir de début juin »), sans jour ni année, en précisant qu'ils sont à revérifier quand le calendrier officiel de sa session sera publié. Pour les candidatures hors Parcoursup, même règle. Si l'élève est en Première, dis-le dans la synthèse (il candidatera l'année suivante).
 - Niveau d'anglais : utilise de la même façon pour toutes les formations le niveau déclaré dans PROFIL (« langues ») et, à côté, sa note de LVA ; si une formation exige un niveau supérieur, dis-le.
@@ -279,6 +340,8 @@ Règles absolues :
 - Ne favorise aucune voie par principe. Tutoie l'élève, parle au nom de CapSup (« nous », jamais « je »). Une CPGE ECG est en « lycée public ou privé sous contrat ».
 - Voie technologique : si PROFIL indique la voie technologique (type_lycee, serie_bac, spécialités de sa série), vérifie pour chaque formation dans la fiche (conditions, profil attendu, spécialités recommandées, part de bacheliers technologiques admis) qu'elle est accessible à sa série ; si une fiche réserve la formation au bac général, ne la recommande pas, ou seulement si l'élève la vise explicitement, en le signalant dans "points_vigilance". Tu peux t'appuyer sur REPÈRES (voie technologique) pour les généralités (taux minimal de bacheliers technologiques en BUT, prépas ECT, TSI, TPC, TB) en citant leur source ; si une voie pensée pour sa série n'est pas parmi les formations analysées, propose-la en piste (recherche web, page citée) ou conseille-lui de la regarder.
 - N'applique pas aux bacheliers technologiques les attentes de spécialités de la voie générale (ex. « spécialité maths ») : compare plutôt avec ses spécialités de série et ses notes.
+- Les « félicitations » (comme les « compliments » ou « encouragements ») sont un avis du conseil de classe, pas une mention : n'écris jamais « mention de félicitations ». Les mentions (Assez bien, Bien, Très bien) sont celles du bac.
+- Types de formation cochés (CONTEXTE « TYPES DE FORMATION COCHÉS ») : chacun apparaît dans une voie ou dans "autres_pistes".
 - Phrases courtes et concrètes, sans flatterie.
 "lacunes" (affiché sous le titre « Points à vérifier de ton côté ») : 2 à 4 points concrets que l'élève doit vérifier ou faire (attendus à relire, information non publiée à demander à l'établissement, journées portes ouvertes, élargir ses vœux…). Jamais de remarque sur CapSup ou sur ce bilan.
 Réponds uniquement en JSON :
@@ -383,12 +446,42 @@ const INTERDITS = [
   [/pr[ée]s[ée]lection/i, "« présélection »"], [/\b(CONTEXTE|PROFIL)\b/, "terme interne"],
   [/\bIA\b|intelligence artificielle|automatiquement/i, "mention de l'IA"],
   [/nous n['’]avons pas (fait|effectu|trouv|pu)|ne permettent pas|non couvert|absente? de notre/i, "autocritique de CapSup"],
+  [/mentions?\s+(de\s+|des\s+|avec\s+)?(f[ée]licitations|compliments|encouragements)/i, "« mention de félicitations » (avis du conseil de classe, pas une mention)"],
 ];
 function controleTon(bilan, pb) {
   const champs = [["synthese", bilan.synthese], ["ordre_voeux", bilan.ordre_voeux], ["lacunes", bilan.lacunes], ["calendrier", bilan.calendrier]];
   for (const v of bilan.voies || []) champs.push([v.id, [v.pourquoi, v.points_vigilance].join(" ")]);
   for (const a of Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []) if (a) champs.push(["autre piste", a.raison]);
   for (const [k, t] of champs) for (const [re, lib] of INTERDITS) if (re.test(String(t || ""))) pb.push(`${k} : ${lib} (vocabulaire interdit, réécrire comme un conseiller)`);
+}
+// Secteur : licence non sélective hors de l'académie de l'élève jamais « Sécurité » ; « Ambitieux » si plafond de
+// non-résidents et sélectivité < 10 % ; une licence ou un BUT de son académie présent dans les fiches doit porter la sécurité.
+const plafonne = f => /non[ -]r[ée]sidents?/i.test(JSON.stringify([f.conditions, f.procedure, f.selectivite_detail]));
+const amb = v => String(v.ambition || "").toLowerCase();
+function controleSecteur(bilan, parId, ctx, pb) {
+  if (!ctx.academie) return;
+  const voies = (bilan.voies || []).filter(v => parId[v.id]);
+  for (const v of voies) {
+    const f = parId[v.id];
+    if (!nonSelective({ selectivityLabel: f.selectivite_libelle }) || !f.academie || f.academie === ctx.academie) continue;
+    if (amb(v).startsWith("s")) pb.push(`${v.id} : licence non sélective de l'académie de ${f.academie}, hors du secteur de l'élève (académie de ${ctx.academie}) : jamais « Sécurité »`);
+    else if (!amb(v).startsWith("amb") && plafonne(f) && f.selectivite_pct != null && f.selectivite_pct < 10)
+      pb.push(`${v.id} : hors académie, plafond de non-résidents et sélectivité ${f.selectivite_pct} % (< 10 %) : à classer « Ambitieux »`);
+  }
+  const locale = Object.values(parId).some(f => f.academie === ctx.academie && (nonSelective({ selectivityLabel: f.selectivite_libelle }) || /BUT/.test(String(f.type || "")))
+    && f.part_bacheliers_technologiques_admis_pct !== 0 || false);
+  if (locale && !voies.some(v => amb(v).startsWith("s") && parId[v.id].academie === ctx.academie))
+    pb.push(`aucune « Sécurité » dans l'académie de l'élève (${ctx.academie}) alors qu'une licence ou un BUT de son académie figure parmi les formations analysées : la classer en voie « Sécurité »`);
+}
+// Types de formation cochés (BUT, BTS) : présents dans une voie ou une autre piste.
+function controleTypes(bilan, parId, pistes, profil, pb) {
+  const obj = String(profil.objectifs_post_bac || "");
+  const lignes = String(pistes.index || "").split("\n");
+  const textes = (bilan.voies || []).map(v => parId[v.id] ? parId[v.id].type + " " + parId[v.id].nom : "")
+    .concat((Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []).filter(Boolean)
+      .map(a => a.id ? (lignes.find(l => l.startsWith(a.id + " |")) || (parId[a.id] ? parId[a.id].type + " " + parId[a.id].nom : "")) : [a.nom, a.etablissement].join(" "))).join(" \n ");
+  for (const [t, re] of [["BUT", /\bBUT\b|Bachelor universitaire de technologie/i], ["BTS", /\bBTS\b|brevet de technicien sup/i]])
+    if (new RegExp("\\b" + t + "\\b", "i").test(obj) && !re.test(textes)) pb.push(`type « ${t} » coché par l'élève absent des voies et des autres pistes`);
 }
 function controler(bilan, fiches, profil, ctx, pistes = { ids: [], index: "" }) {
   const parId = Object.fromEntries(fiches.map(f => [f.id, f]));
@@ -407,6 +500,8 @@ function controler(bilan, fiches, profil, ctx, pistes = { ids: [], index: "" }) 
       n++; if (!src.includes(x) && !prof.includes(x)) pb.push(`${v.id} : « ${x} » absent de la fiche`);
     }
   }
+  controleSecteur(bilan, parId, ctx, pb);
+  controleTypes(bilan, parId, pistes, profil, pb);
   const voiesIds = new Set((bilan.voies || []).map(v => v.id));
   const permis = new Set([...pistes.ids, ...fiches.map(f => f.id)]);
   for (const a of Array.isArray(bilan.autres_pistes) ? bilan.autres_pistes : []) {
@@ -504,7 +599,9 @@ export const handler = async (event) => {
   web.cites = []; web.urls = new Set();
   try {
     const { cat, calendrier } = await chargerCatalogue(URL || "https://capsup.org");
-    ctx = contexteDepuis(data || {}, calendrier, new Date(), cat);
+    for (const e of cat) e._acad = academieFiche(e);
+    const acad = await academieEleve(data || {}, URL || "https://capsup.org");
+    ctx = contexteDepuis(data || {}, calendrier, new Date(), cat, acad);
     const reg = regionEleve(data || {}, cat);
     const sel = await claude(SYS_SELECTION,
       "CONTEXTE :\n" + ctx.texte + "\n\nPROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nINDEX :\n" + cat.map(ligneIndex).join("\n"), 16000, MODELE_TRI, "étape 1 (présélection) : ");
@@ -515,13 +612,13 @@ export const handler = async (event) => {
     for (const i of prepas(cat, data || {}, ctx, deja)) { ids.push(i); deja.add(i); }
     const sec = securites(cat, data || {}, ctx, deja);
     for (const i of sec.ajout) { ids.push(i); deja.add(i); }
-    console.log("Bilan IA : présélection", ids.join(", "), "| région", reg || "aucune", "| session", ctx.session);
+    console.log("Bilan IA : présélection", ids.join(", "), "| région", reg || "aucune", "| académie", ctx.academie || "inconnue", "| session", ctx.session);
     fiches = ids.map(i => ficheCompacte(cat.find(e => e.id === i)));
     // pistes de l'étape 1, puis les options plus accessibles de la région non retenues (pour qu'aucune ne soit ignorée)
     const pistesIds = [...new Set([...(sel.pistes || []).slice(0, 8), ...sec.pool].filter(i => !deja.has(i) && cat.some(e => e.id === i)))].slice(0, 12);
     pistes = { ids: pistesIds, index: pistesIds.map(i => ligneIndex(cat.find(e => e.id === i))).join("\n") };
     const entree = "CONTEXTE :\n" + ctx.texte + "\n\nPROFIL :\n" + JSON.stringify(profil, null, 1) + "\n\nFICHES :\n" + JSON.stringify(fiches)
-      + "\n\nAUTRES FORMATIONS DU CATALOGUE (pour \"autres_pistes\" ; une ligne : id | nom | établissement | ville | région | type | domaine | sélectivité | frais | durée) :\n" + (pistes.index || "(aucune)")
+      + "\n\nAUTRES FORMATIONS DU CATALOGUE (pour \"autres_pistes\" ; une ligne : id | nom | établissement | ville | région | académie | type | domaine | sélectivité | frais | durée) :\n" + (pistes.index || "(aucune)")
       + "\n\n" + REPERES_TECHNO;
     bilan = await claude(SYS_BILAN, entree, 64000, MODELE, "étape 2 (rédaction) : ", [RECHERCHE_WEB]);
     ids_corriges.push(...reparerIds(bilan, cat, fiches, pistes));
