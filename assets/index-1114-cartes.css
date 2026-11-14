@@ -948,3 +948,22 @@ button.cmp-chip-more:hover{background:#e7e0d2}
 .av-regles li{font-size:.84rem;line-height:1.5;color:var(--color-text-secondary)}
 .av-regles li strong{color:var(--color-text-primary)}
 @media (max-width:640px){.av-row{grid-template-columns:1fr}.av-card{padding:1.15rem}.av-sum{gap:.9rem}}
+/* v94 : cartes « Formations phares » de l'accueil, plus compactes, logo, carte cliquable */
+.cs-hcard{padding:.9rem 1rem}
+.cs-hcard .cs-hc-top{margin-bottom:.6rem}
+.cs-hcard .cs-hc-top>span:first-child{padding:.15rem .6rem;font-size:.68rem}
+.cs-hcard .cs-hc-head{display:flex;align-items:center;gap:.65rem;margin-bottom:.7rem}
+.cs-hcard .cs-hc-name{font-size:.95rem;line-height:1.25;margin:0}
+.cs-hcard .cs-hc-uni{font-size:.72rem;margin-top:.15rem}
+.cs-hcard .cs-hc-grid{gap:.4rem;margin-bottom:.6rem}
+.cs-hcard .cs-hc-tile{padding:.45rem .6rem}
+.cs-hcard .cs-hc-tile>span:first-child{font-size:.66rem}
+.cs-hcard .cs-hc-v{font-size:1rem;line-height:1.3}
+.cs-hcard .cs-hc-v.cs-hc-nd{font-size:.78rem;font-weight:700;line-height:1.25;margin:.1rem 0}
+.cs-hcard .cs-hc-v2{font-size:.85rem;line-height:1.3}
+.cs-hcard .cs-hc-tile>span:last-child{font-size:.62rem}
+.cs-hcard .cs-hc-traj{margin-bottom:.6rem}
+.cs-hcard .cs-hc-traj>div{padding:.5rem .65rem;gap:.5rem}
+.cs-hcard .cs-hc-act{gap:.15rem}
+.cs-hcard .cs-hc-cmp{height:2.15rem}
+.cs-hcard .cs-hc-link{padding:.3rem 0}
