@@ -969,3 +969,8 @@ button.cmp-chip-more:hover{background:#e7e0d2}
 .cs-hcard .cs-hc-link{padding:.3rem 0}
 /* v95 : logo d'établissement sur les cartes Explorer */
 article[data-cat] .cmp-logo-xs{width:1.6rem;height:1.6rem;border-width:1px}
+
+.csx-pag button:not(:disabled){cursor:pointer}
+@media (max-width:520px){.csx-pag .csx-pl{display:none}.csx-pag .csx-pn{min-width:2rem;padding-left:.4rem;padding-right:.4rem}.csx-pag .csx-far{display:none}}
+.csx-pag>div:last-child{flex-wrap:nowrap}.csx-pag .csx-pn{min-width:2.25rem}.csx-pag span[aria-hidden]{user-select:none}@media (min-width:768px){.csx-pag>div:first-child{text-align:left}}
+@media (max-width:520px){.csx-pag .csx-pn{min-width:2rem}}
