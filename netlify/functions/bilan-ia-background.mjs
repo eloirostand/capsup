@@ -534,7 +534,7 @@ function lienBilan(base, prenom, bilan) {
   return base.replace(/\/$/, "") + "/#bilan/" + deflateRawSync(Buffer.from(json, "utf8"), { level: 9 }).toString("base64url");
 }
 
-function emailHtml(prenom, bilan, fiches, lien) {
+function emailHtml(prenom, bilan, fiches, lien, excuse = false) {
   const parId = Object.fromEntries(fiches.map(f => [f.id, f]));
   const voies = (bilan.voies || []).filter(v => parId[v.id]);
   const n = k => voies.filter(v => String(v.ambition || "").toLowerCase().startsWith(k)).length;
@@ -549,6 +549,7 @@ function emailHtml(prenom, bilan, fiches, lien) {
 <tr><td style="background:#ffffff;border:1.5px solid #c9d4f6;border-radius:20px;padding:28px 24px">
 <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#2B55E8">Ton bilan d'orientation</div>
 <div style="font-family:Arial,sans-serif;font-size:26px;font-weight:bold;color:#1e232a;padding:6px 0 10px">${prenom ? esc(prenom) + ", ton" : "Ton"} bilan est prêt</div>
+${excuse ? `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#3d4452;padding-bottom:10px">Nous sommes désolés pour le délai : un problème technique de notre côté a retardé l'envoi de ton bilan.</div>` : ""}
 <div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#3d4452">Nous avons étudié tes réponses et sélectionné les formations qui correspondent le mieux à ton profil.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 8px"><tr>${tuile(n("amb"), "ambitieuses", "#efeafd", "#5b21b6")}${tuile(voies.length - n("amb") - n("s"), "cohérentes", "#e8eefc", "#1e40af")}${tuile(n("s"), "de sécurité", "#fff4dc", "#92400e")}</tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 22px">${contenu}</table>
@@ -566,7 +567,7 @@ export const handler = async (event) => {
   const attendu = createHash("sha256").update("capsup:" + ANTHROPIC_API_KEY).digest("hex");
   if ((event.headers || {})["x-capsup-cle"] !== attendu) { console.log("Bilan IA : appel refusé"); return; }
 
-  const { id, data } = JSON.parse(event.body || "{}");
+  const { id, data, excuse } = JSON.parse(event.body || "{}");
   const email = (data && data.email || "").trim(), prenom = (data && data.nom || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { console.log("Bilan IA : email invalide"); return; }
   const profil = profilDepuis(data);
@@ -640,7 +641,7 @@ export const handler = async (event) => {
   const corps = {
     action: "brouillon", token: BILAN_TOKEN, id: String(id || ""), to: email, prenom,
     sujet: (prenom ? prenom + ", ton" : "Ton") + " bilan d'orientation CapSup est prêt",
-    html: bilan && !erreur ? emailHtml(prenom || "", bilan, fiches, lienBilan(URL || "https://capsup.org", prenom || "", bilan)) : "",
+    html: bilan && !erreur ? emailHtml(prenom || "", bilan, fiches, lienBilan(URL || "https://capsup.org", prenom || "", bilan), excuse === true) : "",
     envoyer: !!(bilan && !erreur && !rapport.problemes.length), // envoi direct si le contrôle ne trouve rien
     rapport: erreur ? "ÉCHEC de la génération : " + erreur + ". Bilan à faire à la main."
       : (rapport.problemes.length ? "À VÉRIFIER : " + rapport.problemes.join(" ; ")

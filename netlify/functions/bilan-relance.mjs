@@ -18,6 +18,7 @@ button{margin-top:18px;background:#2B55E8;color:#fff;border:0;border-radius:10px
 <h1>Relancer un bilan</h1>${msg ? `<div class="m">${msg}</div>` : ""}
 <form method="post"><label for="t">Phrase secrète (BILAN_TOKEN)</label><input id="t" name="token" type="password" required autocomplete="current-password">
 <label for="e">Email de l'élève</label><input id="e" name="email" type="email" required>
+<label style="font-weight:400"><input type="checkbox" name="excuse" value="1" checked style="width:auto;margin-right:8px">Ajouter un mot d'excuse pour le délai dans l'email</label>
 <button type="submit">Relancer le bilan</button></form>
 <p style="font-size:13px;color:#5b6476">La dernière soumission de cet élève est reprise telle quelle. L'élève reçoit le bilan dans les minutes qui suivent (ou tu reçois une alerte si la génération échoue encore).</p>
 </body></html>`,
@@ -55,7 +56,7 @@ export const handler = async (event) => {
     const id = sub.id + "-relance-" + Date.now();
     const r = await fetch(`${URL}/.netlify/functions/bilan-ia-background`, {
       method: "POST", headers: { "content-type": "application/json", "x-capsup-cle": cle },
-      body: JSON.stringify({ id, data: sub.data || {} }),
+      body: JSON.stringify({ id, data: sub.data || {}, excuse: f.get("excuse") === "1" }),
     });
     console.log("Relance : lancée", r.status, sub.id);
     const quand = new Date(sub.created_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
