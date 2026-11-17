@@ -545,7 +545,7 @@ function emailHtml(prenom, bilan, fiches, lien, excuse = false) {
   return `<!doctype html><html><body style="margin:0;padding:0;background:#f8f5ee">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f5ee"><tr><td align="center" style="padding:28px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
-<tr><td style="padding:0 4px 16px;font-family:Arial,sans-serif;font-size:22px;font-weight:bold;color:#2B55E8">CapSup<span style="color:#FFB020">.</span></td></tr>
+<tr><td style="padding:0 4px 18px"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td valign="middle" style="padding-right:12px"><img src="https://capsup.org/logo-capsup-1109.png" width="44" height="44" alt="CapSup" style="display:block;border:0;width:44px;height:44px;border-radius:50%"></td><td valign="middle" style="font-family:Arial,sans-serif;font-size:28px;font-weight:bold;color:#141B33">CapSup</td></tr></table></td></tr>
 <tr><td style="background:#ffffff;border:1.5px solid #c9d4f6;border-radius:20px;padding:28px 24px">
 <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#2B55E8">Ton bilan d'orientation</div>
 <div style="font-family:Arial,sans-serif;font-size:26px;font-weight:bold;color:#1e232a;padding:6px 0 10px">${prenom ? esc(prenom) + ", ton" : "Ton"} bilan est prêt</div>
